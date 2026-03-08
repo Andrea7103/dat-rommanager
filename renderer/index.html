@@ -1,0 +1,1419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' https://en.wikipedia.org https://api.github.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self' 'unsafe-inline'; img-src 'self' https: data:">
+<title>DAT ROMMANAGER</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=VT323&display=swap');
+
+  :root {
+    --bg:#0a0a0a; --panel:#0e0e0e; --border:#2e2e2e;
+    --green:#00ff41; --green-dim:#00cc34; --green-dark:#002a0a;
+    --amber:#ffb000; --red:#ff3333;
+    --text:#d8d8d8; --text-mid:#909090; --text-dim:#585858;
+    --scan:rgba(0,255,65,0.02);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;overflow:hidden;}
+  body{background:var(--bg);color:var(--text);font-family:'Share Tech Mono',monospace;display:flex;flex-direction:column;user-select:none;}
+  body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,var(--scan) 2px,var(--scan) 4px);pointer-events:none;z-index:9999;}
+  body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,0.6) 100%);pointer-events:none;z-index:9998;}
+
+  /* HEADER */
+  header{flex-shrink:0;border-bottom:1px solid var(--border);padding:11px 20px;display:flex;align-items:center;gap:16px;-webkit-app-region:drag;position:relative;overflow:hidden;}
+  header::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--green),transparent);animation:scanH 5s linear infinite;}
+  @keyframes scanH{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+  .logo{font-family:'Orbitron',monospace;font-weight:900;font-size:17px;color:var(--green);text-shadow:0 0 16px var(--green),0 0 32px var(--green-dim);letter-spacing:4px;flex-shrink:0;}
+  .logo span{color:var(--amber);text-shadow:0 0 16px var(--amber);}
+  .tagline{font-family:'VT323',monospace;font-size:16px;color:var(--text-mid);letter-spacing:2px;flex:1;}
+  .hdr-right{display:flex;align-items:center;gap:12px;-webkit-app-region:no-drag;}
+  .status-pill{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-mid);letter-spacing:1px;}
+  .status-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:pulse 2s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.25}}
+  .btn-home{font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--text-mid);background:transparent;border:1px solid var(--border);padding:5px 11px;cursor:pointer;transition:all 0.2s;}
+  .btn-home:hover{color:var(--green);border-color:var(--green);}
+  .btn-credits{font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--green);background:rgba(0,255,65,0.1);border:1px solid var(--green);padding:5px 11px;cursor:pointer;transition:all 0.2s;text-shadow:0 0 10px var(--green);box-shadow:0 0 8px rgba(0,255,65,0.15);}
+  .btn-credits:hover{background:rgba(0,255,65,0.2);box-shadow:0 0 16px rgba(0,255,65,0.3);}
+
+  /* UPDATE BANNER */
+  .update-banner{flex-shrink:0;display:none;align-items:center;gap:12px;padding:7px 20px;background:rgba(255,176,0,0.08);border-bottom:1px solid var(--amber);font-size:11px;}
+  .update-banner.visible{display:flex;}
+  .update-dot{width:6px;height:6px;border-radius:50%;background:var(--amber);box-shadow:0 0 6px var(--amber);flex-shrink:0;}
+  .update-text{flex:1;color:var(--amber);}
+  .update-text strong{color:var(--amber);}
+  .update-whatsnew{font-size:10px;color:var(--text-mid);cursor:pointer;text-decoration:underline;flex-shrink:0;}
+  .update-whatsnew:hover{color:var(--amber);}
+  .btn-update-go{font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:1px;color:var(--bg);background:var(--amber);border:none;padding:4px 12px;cursor:pointer;transition:all 0.2s;flex-shrink:0;}
+  .btn-update-go:hover{background:#ffc533;box-shadow:0 0 10px var(--amber);}
+  .btn-update-dismiss{font-size:14px;color:var(--text-dim);background:none;border:none;cursor:pointer;padding:0 4px;flex-shrink:0;transition:color 0.2s;}
+  .btn-update-dismiss:hover{color:var(--text);}
+
+  /* WHATS NEW MODAL */
+  .whatsnew-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:10001;align-items:center;justify-content:center;}
+  .whatsnew-overlay.open{display:flex;}
+  .whatsnew-box{background:var(--panel);border:1px solid var(--amber);box-shadow:0 0 30px rgba(255,176,0,0.15);width:500px;max-height:70vh;display:flex;flex-direction:column;animation:popIn 0.2s ease;}
+  @keyframes popIn{from{opacity:0;transform:scale(0.96)}to{opacity:1;transform:scale(1)}}
+  .whatsnew-header{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;background:rgba(255,176,0,0.04);}
+  .whatsnew-title{font-family:'Orbitron',monospace;font-size:10px;font-weight:700;letter-spacing:3px;color:var(--amber);flex:1;}
+  .whatsnew-version{font-size:14px;color:var(--green);font-family:'VT323',monospace;}
+  .whatsnew-close{font-family:'VT323',monospace;font-size:22px;color:var(--text-dim);background:none;border:none;cursor:pointer;transition:color 0.2s;}
+  .whatsnew-close:hover{color:var(--red);}
+  .whatsnew-body{flex:1;overflow-y:auto;padding:20px;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+  .whatsnew-notes{font-size:12px;color:var(--text-mid);line-height:1.9;white-space:pre-wrap;}
+  .whatsnew-footer{padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;}
+  .btn-goto-gh{font-family:'Orbitron',monospace;font-size:10px;font-weight:700;letter-spacing:2px;color:var(--bg);background:var(--amber);border:none;padding:10px 24px;cursor:pointer;transition:all 0.2s;}
+  .btn-goto-gh:hover{background:#ffc533;box-shadow:0 0 16px var(--amber);}
+  .btn-later{font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:1px;color:var(--text-dim);background:transparent;border:1px solid var(--border);padding:10px 20px;cursor:pointer;transition:all 0.2s;}
+  .btn-later:hover{border-color:var(--text-dim);color:var(--text);}
+
+  /* SCREENS */
+  .screen{display:none;flex:1;flex-direction:column;min-height:0;}
+  .screen.active{display:flex;}
+
+  /* BREADCRUMB */
+  .breadcrumb{flex-shrink:0;display:flex;align-items:center;gap:8px;padding:6px 20px;border-bottom:1px solid var(--border);background:rgba(0,0,0,0.2);font-size:11px;color:var(--text-mid);letter-spacing:1px;}
+  .bc-home{color:var(--green-dim);cursor:pointer;transition:color 0.2s;}
+  .bc-home:hover{color:var(--green);}
+  .bc-sep{color:var(--border);}
+
+  /* SECTION HDR */
+  .section-hdr{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:6px 14px;border-bottom:1px solid var(--border);background:rgba(0,255,65,0.02);}
+  .section-title{font-family:'Orbitron',monospace;font-size:9px;font-weight:700;letter-spacing:3px;color:var(--green-dim);}
+  .section-badge{font-family:'VT323',monospace;font-size:16px;color:var(--text-mid);}
+
+  /* HOME */
+  .home-screen{align-items:center;justify-content:center;padding:32px;gap:36px;}
+  .home-credit{position:absolute;bottom:18px;right:24px;font-size:10px;color:var(--text-dim);letter-spacing:1px;text-align:right;line-height:1.7;}
+  .home-credit span{color:var(--green-dim);}
+  .home-credit span:hover{color:var(--green);}
+  .home-intro{text-align:center;}
+  .home-title{font-family:'Orbitron',monospace;font-weight:900;font-size:11px;letter-spacing:4px;color:var(--text-mid);margin-bottom:8px;}
+  .home-sub{font-family:'VT323',monospace;font-size:18px;color:var(--text-mid);letter-spacing:2px;}
+  .module-grid{display:grid;grid-template-columns:repeat(3,220px);gap:16px;}
+  .module-pagination{display:flex;align-items:center;gap:16px;}
+  .btn-page{font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--text-mid);background:transparent;border:1px solid var(--border);padding:6px 16px;cursor:pointer;transition:all 0.2s;}
+  .btn-page:hover:not(:disabled){color:var(--green);border-color:var(--green);}
+  .btn-page:disabled{opacity:0.25;cursor:default;}
+  .page-indicator{font-size:11px;color:var(--text-dim);letter-spacing:2px;}
+  .module-btn{border:1px solid var(--border);background:var(--panel);padding:22px 20px;cursor:pointer;transition:all 0.2s;position:relative;overflow:hidden;text-align:left;display:flex;flex-direction:column;gap:10px;min-height:130px;}
+  .module-btn::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(0,255,65,0.04),transparent 60%);opacity:0;transition:opacity 0.2s;}
+  .module-btn.active-module{border-color:var(--green-dim);}
+  .module-btn.active-module:hover{border-color:var(--green);background:rgba(0,255,65,0.04);box-shadow:0 0 20px rgba(0,255,65,0.08);}
+  .module-btn.active-module:hover::before{opacity:1;}
+  .module-btn.locked{cursor:default;opacity:0.35;}
+  .module-num{font-family:'VT323',monospace;font-size:14px;color:var(--text-dim);letter-spacing:2px;}
+  .module-btn.active-module .module-num{color:var(--green-dim);}
+  .module-icon{font-family:'VT323',monospace;font-size:36px;color:var(--text-dim);line-height:1;transition:all 0.2s;}
+  .module-btn.active-module:hover .module-icon{color:var(--green);text-shadow:0 0 16px var(--green);}
+  .module-name{font-family:'Orbitron',monospace;font-weight:700;font-size:10px;letter-spacing:2px;color:var(--text);transition:color 0.2s;}
+  .module-btn.active-module:hover .module-name{color:var(--green);}
+  .module-desc{font-size:11px;color:var(--text-mid);line-height:1.6;}
+  .module-badge{position:absolute;top:10px;right:10px;font-size:8px;letter-spacing:2px;padding:2px 6px;border:1px solid;}
+  .module-badge.ready{color:var(--green);border-color:var(--green-dim);}
+  .module-badge.beta{color:var(--amber);border-color:var(--amber);}
+  .module-badge.soon{color:var(--text-dim);border-color:var(--border);}
+
+  /* PARSE PROGRESS BAR (Explorer) */
+  .exp-parse-progress{flex-shrink:0;display:none;flex-direction:column;gap:6px;padding:12px 16px;border-bottom:1px solid var(--border);background:rgba(0,255,65,0.03);}
+  .exp-parse-progress.visible{display:flex;}
+  .exp-parse-label{font-size:11px;color:var(--text-mid);display:flex;justify-content:space-between;}
+  .exp-parse-label span{color:var(--green);}
+  .exp-parse-bar-wrap{height:4px;background:#111;border:1px solid var(--border);overflow:hidden;}
+  .exp-parse-bar-fill{height:100%;background:linear-gradient(90deg,var(--green-dim),var(--green));box-shadow:0 0 6px var(--green);width:0%;transition:width 0.3s ease;}
+
+
+
+  .docs-screen{flex-direction:row;}
+  .docs-sidebar{width:200px;flex-shrink:0;border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;}
+  .docs-nav-item{padding:10px 16px;border-bottom:1px solid rgba(46,46,46,0.5);cursor:pointer;font-size:12px;color:var(--text-mid);transition:all 0.15s;display:flex;align-items:center;gap:8px;}
+  .docs-nav-item:hover{background:rgba(0,255,65,0.04);color:var(--text);}
+  .docs-nav-item.active{background:rgba(0,255,65,0.08);color:var(--green);border-left:2px solid var(--green);padding-left:14px;}
+  .docs-nav-icon{font-family:'VT323',monospace;font-size:18px;flex-shrink:0;}
+  .docs-nav-label{flex:1;}
+  .docs-nav-badge{font-size:8px;padding:1px 5px;border:1px solid;letter-spacing:1px;}
+  .docs-nav-badge.ready{color:var(--green);border-color:var(--green-dim);}
+  .docs-nav-badge.beta{color:var(--amber);border-color:var(--amber);}
+  .docs-nav-badge.soon{color:var(--text-dim);border-color:var(--border);}
+  .docs-content{flex:1;overflow-y:auto;padding:28px 36px;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+  .docs-section{display:none;}
+  .docs-section.active{display:block;}
+  .docs-h1{font-family:'Orbitron',monospace;font-weight:900;font-size:16px;letter-spacing:4px;color:var(--green);text-shadow:0 0 10px var(--green-dim);margin-bottom:6px;}
+  .docs-h1 span{color:var(--amber);}
+  .docs-version{font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:20px;}
+  .docs-divider{height:1px;background:linear-gradient(90deg,var(--green-dim),transparent);margin:18px 0;}
+  .docs-h2{font-family:'Orbitron',monospace;font-weight:700;font-size:10px;letter-spacing:3px;color:var(--green-dim);margin:18px 0 8px;}
+  .docs-p{font-size:12px;color:var(--text-mid);line-height:1.9;margin-bottom:10px;}
+  .docs-p strong{color:var(--text);}
+  .docs-p em{color:var(--amber);font-style:normal;}
+  .docs-ul{list-style:none;padding:0;margin:0 0 12px;}
+  .docs-ul li{font-size:12px;color:var(--text-mid);line-height:1.9;padding-left:16px;position:relative;}
+  .docs-ul li::before{content:'▸';position:absolute;left:0;color:var(--green-dim);}
+  .docs-ul li strong{color:var(--text);}
+  .docs-ul li em{color:var(--amber);font-style:normal;}
+  .docs-code{background:#080808;border:1px solid var(--border);padding:10px 14px;font-size:11px;color:var(--amber);margin:8px 0 14px;display:block;overflow-x:auto;white-space:pre;}
+  .docs-tip{background:rgba(0,255,65,0.04);border:1px solid var(--green-dark);padding:10px 14px;margin:10px 0;font-size:11px;color:var(--text-mid);line-height:1.8;}
+  .docs-tip::before{content:'TIP  ';color:var(--green);font-weight:bold;}
+  .docs-warn{background:rgba(255,176,0,0.04);border:1px solid rgba(255,176,0,0.2);padding:10px 14px;margin:10px 0;font-size:11px;color:var(--text-mid);line-height:1.8;}
+  .docs-warn::before{content:'NOTE  ';color:var(--amber);font-weight:bold;}
+  .docs-changelog{display:flex;flex-direction:column;gap:12px;}
+  .docs-cl-entry{border:1px solid var(--border);padding:12px 16px;background:var(--panel);}
+  .docs-cl-ver{font-family:'VT323',monospace;font-size:20px;color:var(--green);margin-bottom:4px;}
+  .docs-cl-date{font-size:10px;color:var(--text-dim);letter-spacing:1px;margin-bottom:8px;}
+  .docs-cl-items{list-style:none;padding:0;margin:0;}
+  .docs-cl-items li{font-size:12px;color:var(--text-mid);line-height:1.8;padding-left:16px;position:relative;}
+  .docs-cl-items li::before{content:'·';position:absolute;left:4px;color:var(--green-dim);}
+  .btn-docs{font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--text-mid);background:transparent;border:1px solid var(--border);padding:5px 11px;cursor:pointer;transition:all 0.2s;}
+  .btn-docs:hover{color:var(--green);border-color:var(--green);}
+
+  /* MODULE 01 */
+  .merger-screen{flex-direction:column;}
+  .workspace{flex:1;display:grid;grid-template-columns:1fr 370px;min-height:0;}
+  .left-col{display:flex;flex-direction:column;border-right:1px solid var(--border);min-height:0;}
+  .drop-area{flex-shrink:0;border-bottom:1px solid var(--border);padding:18px 24px;display:flex;align-items:center;gap:20px;cursor:pointer;transition:background 0.2s;position:relative;overflow:hidden;}
+  .drop-area::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(45deg,transparent,transparent 12px,rgba(0,255,65,0.007) 12px,rgba(0,255,65,0.007) 24px);}
+  .drop-area:hover,.drop-area.dragover{background:var(--green-dark);}
+  .drop-area:hover .drop-icon,.drop-area.dragover .drop-icon{color:var(--green);text-shadow:0 0 20px var(--green);}
+  .drop-icon{font-family:'VT323',monospace;font-size:48px;color:var(--text-dim);line-height:1;transition:all 0.2s;flex-shrink:0;}
+  .drop-title{font-family:'Orbitron',monospace;font-weight:700;font-size:11px;letter-spacing:3px;color:var(--green);margin-bottom:6px;}
+  .drop-sub{font-size:12px;color:var(--text-mid);line-height:1.7;}
+  .drop-sub em{color:var(--amber);font-style:normal;}
+  .file-list{flex:1;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent;padding:2px 0;}
+  .file-item{display:flex;align-items:center;gap:8px;padding:6px 16px;border-bottom:1px solid rgba(46,46,46,0.5);font-size:12px;animation:fadeIn 0.15s ease;}
+  @keyframes fadeIn{from{opacity:0;transform:translateX(-6px)}to{opacity:1;transform:translateX(0)}}
+  .fi-icon{font-family:'VT323',monospace;font-size:16px;flex-shrink:0;}
+  .fi-names{flex:1;min-width:0;}
+  .fi-name{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .fi-path{display:block;font-size:10px;color:var(--text-mid);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .fi-badge{font-size:9px;padding:1px 5px;border:1px solid;letter-spacing:1px;flex-shrink:0;}
+  .fi-badge.xml{color:var(--green);border-color:var(--green-dim);}
+  .fi-badge.clr{color:var(--amber);border-color:var(--amber);}
+  .fi-badge.err{color:var(--red);border-color:var(--red);}
+  .fi-count{font-size:11px;color:var(--text-mid);min-width:60px;text-align:right;flex-shrink:0;}
+  .empty-list{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text-dim);gap:8px;}
+  .empty-list .big{font-family:'VT323',monospace;font-size:48px;line-height:1;}
+  .empty-list span{font-size:12px;letter-spacing:1px;}
+  .right-col{display:flex;flex-direction:column;min-height:0;}
+  .stats-strip{flex-shrink:0;display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);}
+  .stat-cell{padding:9px 14px;border-right:1px solid var(--border);position:relative;overflow:hidden;}
+  .stat-cell:nth-child(even){border-right:none;}
+  .stat-cell:nth-child(n+3){border-top:1px solid var(--border);}
+  .stat-cell::after{content:'';position:absolute;bottom:0;left:0;width:35%;height:2px;background:var(--green);box-shadow:0 0 6px var(--green);}
+  .stat-label{font-size:9px;letter-spacing:2px;color:var(--text-mid);text-transform:uppercase;margin-bottom:3px;}
+  .stat-val{font-family:'VT323',monospace;font-size:26px;color:var(--green);text-shadow:0 0 10px var(--green-dim);line-height:1;}
+  .stat-val.am{color:var(--amber);text-shadow:0 0 10px var(--amber);}
+  .config-scroll{flex-shrink:0;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+  .cfg-row{display:flex;align-items:center;justify-content:space-between;padding:7px 14px;border-bottom:1px solid rgba(46,46,46,0.6);gap:8px;}
+  .cfg-lbl{font-size:12px;color:var(--text);flex:1;}
+  .cfg-hint{font-size:10px;color:var(--text-mid);margin-top:2px;}
+  input[type="text"]{background:#080808;border:1px solid var(--border);color:var(--green);font-family:'Share Tech Mono',monospace;font-size:12px;padding:4px 8px;width:130px;outline:none;transition:border-color 0.2s;user-select:text;}
+  input[type="text"]:focus{border-color:var(--green);box-shadow:0 0 6px var(--green-dark);}
+  .toggle{position:relative;width:36px;height:18px;flex-shrink:0;}
+  .toggle input{opacity:0;width:0;height:0;}
+  .toggle-sl{position:absolute;inset:0;background:#111;border:1px solid var(--border);cursor:pointer;transition:0.2s;}
+  .toggle-sl::before{content:'';position:absolute;width:12px;height:12px;left:2px;top:2px;background:var(--text-dim);transition:0.2s;}
+  .toggle input:checked+.toggle-sl{background:var(--green-dark);border-color:var(--green);}
+  .toggle input:checked+.toggle-sl::before{transform:translateX(18px);background:var(--green);box-shadow:0 0 5px var(--green);}
+  .log-area{flex:1;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent;padding:6px 14px;border-top:1px solid var(--border);background:rgba(0,0,0,0.3);min-height:0;}
+  .log-line{display:flex;gap:8px;font-size:11px;line-height:1.7;}
+  .log-time{color:var(--text-dim);flex-shrink:0;}
+  .log-msg{color:var(--text-mid);}
+  .log-msg.ok{color:var(--green);}
+  .log-msg.warn{color:var(--amber);}
+  .log-msg.err{color:var(--red);}
+  .merge-btn-wrap{flex-shrink:0;padding:12px 14px;border-top:1px solid var(--border);background:var(--panel);position:relative;}
+  .merge-btn-wrap::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--green-dim),transparent);}
+  .btn-merge{font-family:'Orbitron',monospace;font-weight:900;font-size:13px;letter-spacing:4px;color:var(--bg);background:var(--green);border:none;padding:14px 0;width:100%;cursor:pointer;position:relative;overflow:hidden;transition:all 0.25s;clip-path:polygon(10px 0%,100% 0%,calc(100% - 10px) 100%,0% 100%);}
+  .btn-merge:hover:not(:disabled){background:#00ff41;box-shadow:0 0 28px var(--green),0 0 56px rgba(0,255,65,0.25);letter-spacing:6px;}
+  .btn-merge:disabled{background:#141414;color:var(--text-dim);cursor:not-allowed;clip-path:none;}
+  .btn-merge::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.18),transparent);transform:translateX(-100%);animation:shimmer 3s ease-in-out infinite;}
+  .btn-merge:disabled::after{display:none;}
+  @keyframes shimmer{0%{transform:translateX(-100%)}50%,100%{transform:translateX(100%)}}
+
+  /* MODULE 02 — DAT EXPLORER */
+  .explorer-screen{flex-direction:column;}
+  .exp-layout{flex:1;display:flex;flex-direction:row;min-height:0;overflow:hidden;}
+  .exp-left{width:240px;flex-shrink:0;display:flex;flex-direction:column;border-right:1px solid var(--border);min-height:0;overflow:hidden;}
+  .exp-drop{flex-shrink:0;padding:14px 12px;text-align:center;cursor:pointer;transition:background 0.2s;border-bottom:1px solid var(--border);position:relative;overflow:hidden;}
+  .exp-drop::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(45deg,transparent,transparent 12px,rgba(0,255,65,0.007) 12px,rgba(0,255,65,0.007) 24px);}
+  .exp-drop:hover,.exp-drop.dragover{background:var(--green-dark);}
+  .exp-drop:hover .exp-drop-icon,.exp-drop.dragover .exp-drop-icon{color:var(--green);text-shadow:0 0 20px var(--green);}
+  .exp-drop-icon{font-family:'VT323',monospace;font-size:32px;color:var(--text-dim);display:block;line-height:1;margin-bottom:5px;transition:all 0.2s;}
+  .exp-drop-title{font-family:'Orbitron',monospace;font-weight:700;font-size:9px;letter-spacing:3px;color:var(--green);margin-bottom:2px;}
+  .exp-drop-sub{font-size:10px;color:var(--text-mid);}
+  .dat-info{flex:1;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+  .info-group{border-bottom:1px solid var(--border);padding:8px 12px;}
+  .info-group-title{font-family:'Orbitron',monospace;font-size:8px;font-weight:700;letter-spacing:3px;color:var(--green-dim);margin-bottom:6px;}
+  .info-field{display:flex;flex-direction:column;padding:2px 0;}
+  .info-key{font-size:9px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:1px;}
+  .info-val{font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .info-val.green{color:var(--green);}
+  .info-val.amber{color:var(--amber);}
+  .info-val.dim{color:var(--text-dim);font-style:italic;}
+  .exp-center{flex:1;display:flex;flex-direction:column;border-right:1px solid var(--border);min-height:0;min-width:0;overflow:hidden;}
+  .exp-sort-bar{flex-shrink:0;display:flex;align-items:center;gap:6px;padding:5px 12px;border-bottom:1px solid var(--border);background:rgba(0,0,0,0.15);}
+  .sort-label{font-size:9px;color:var(--text-dim);letter-spacing:1px;flex-shrink:0;}
+  .sort-btn{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:1px;padding:3px 8px;border:1px solid var(--border);background:transparent;color:var(--text-dim);cursor:pointer;transition:all 0.15s;white-space:nowrap;}
+  .sort-btn:hover{border-color:var(--text-dim);color:var(--text);}
+  .sort-btn.active{border-color:var(--green-dim);color:var(--green);background:rgba(0,255,65,0.06);}
+  .sort-spacer{flex:1;}
+  .exp-search{flex-shrink:0;padding:6px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;background:rgba(0,0,0,0.2);}
+  .exp-search-icon{color:var(--text-dim);font-size:13px;flex-shrink:0;}
+  .exp-search input{background:transparent;border:none;color:var(--text);font-family:'Share Tech Mono',monospace;font-size:12px;outline:none;flex:1;user-select:text;}
+  .exp-search input::placeholder{color:var(--text-dim);}
+  .exp-count{font-size:10px;color:var(--text-dim);flex-shrink:0;white-space:nowrap;}
+  .exp-entries-pane{display:flex;flex-direction:column;min-height:80px;overflow:hidden;}
+  .rom-list{flex:1;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent;outline:none;}
+  .rom-item{display:flex;align-items:center;gap:8px;padding:6px 12px;border-bottom:1px solid rgba(46,46,46,0.4);font-size:12px;cursor:pointer;transition:background 0.1s;}
+  .rom-item:hover{background:rgba(0,255,65,0.04);}
+  .rom-item.selected{background:rgba(0,255,65,0.09);border-left:2px solid var(--green);padding-left:10px;}
+  .rom-item-icon{font-family:'VT323',monospace;font-size:14px;color:var(--text-dim);flex-shrink:0;}
+  .rom-item-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);}
+  .rom-item-roms{font-size:10px;color:var(--text-mid);flex-shrink:0;white-space:nowrap;}
+  .exp-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text-dim);gap:8px;}
+  .exp-empty .big{font-family:'VT323',monospace;font-size:48px;}
+  .exp-empty span{font-size:11px;letter-spacing:1px;text-align:center;}
+  .exp-splitter{flex-shrink:0;height:6px;background:var(--border);cursor:row-resize;position:relative;transition:background 0.2s;border-top:1px solid var(--border);border-bottom:1px solid var(--border);}
+  .exp-splitter:hover,.exp-splitter.dragging{background:var(--green-dim);}
+  .exp-splitter::after{content:'· · · · ·';position:absolute;left:50%;transform:translateX(-50%);top:-1px;font-size:8px;color:var(--text-dim);letter-spacing:3px;}
+  .exp-detail-pane{display:flex;flex-direction:column;min-height:60px;border-top:1px solid var(--border);overflow:hidden;}
+  .rom-detail-list{flex:1;overflow:hidden;position:relative;}
+  .vscroll-wrap{position:absolute;inset:0;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+  .vscroll-spacer{position:absolute;top:0;left:0;width:1px;pointer-events:none;}
+  .vscroll-visible{position:absolute;top:0;left:0;right:0;}
+
+  .rom-detail-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text-dim);gap:6px;}
+  .rom-detail-empty .big{font-family:'VT323',monospace;font-size:32px;}
+  .rom-detail-empty span{font-size:10px;letter-spacing:1px;text-align:center;}
+  .rom-file-card{padding:6px 14px;border-bottom:1px solid rgba(46,46,46,0.4);}
+  .rom-file-card-name{color:var(--amber);font-size:12px;margin-bottom:4px;word-break:break-all;}
+  .rom-file-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px 16px;}
+  .rom-file-field{display:flex;gap:5px;font-size:11px;}
+  .rom-file-key{color:var(--text-dim);flex-shrink:0;min-width:44px;}
+  .rom-file-val{color:var(--text-mid);word-break:break-all;font-family:'Share Tech Mono',monospace;}
+  .exp-right{width:280px;flex-shrink:0;display:flex;flex-direction:column;min-height:0;overflow:hidden;}
+  .sysinfo-body{flex:1;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+  .sysinfo-img{width:100%;height:130px;object-fit:contain;background:#060606;border-bottom:1px solid var(--border);padding:10px;}
+  .sysinfo-img.hidden{display:none;}
+  .sysinfo-fields{padding:10px 14px;}
+  .sysinfo-field{margin-bottom:8px;}
+  .sysinfo-field-key{font-size:9px;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:2px;}
+  .sysinfo-field-val{font-size:12px;color:var(--text);line-height:1.6;}
+  .sysinfo-field-val.green{color:var(--green);}
+  .sysinfo-field-val.amber{color:var(--amber);}
+  .sysinfo-nodata{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text-dim);gap:10px;}
+  .sysinfo-nodata .big{font-family:'VT323',monospace;font-size:36px;}
+  .sysinfo-nodata span{font-size:10px;letter-spacing:2px;text-align:center;line-height:1.8;}
+  .sysinfo-loading{display:flex;align-items:center;justify-content:center;height:60px;color:var(--text-dim);font-size:10px;letter-spacing:2px;}
+  .sysinfo-source{font-size:9px;color:var(--text-dim);padding:8px 14px;border-top:1px solid var(--border);letter-spacing:1px;}
+  .sysinfo-source a{color:var(--green-dim);cursor:pointer;text-decoration:none;}
+  .sysinfo-source a:hover{color:var(--green);}
+
+  /* MODULE 04 — DAT SPLITTER */
+  .splitter-screen{flex-direction:row;}
+  .spl-left{width:260px;flex-shrink:0;display:flex;flex-direction:column;border-right:1px solid var(--border);overflow:hidden;}
+  .spl-center{flex:1;display:flex;flex-direction:column;min-width:0;border-right:1px solid var(--border);}
+  .spl-right{width:320px;flex-shrink:0;display:flex;flex-direction:column;overflow:hidden;}
+  .spl-drop{flex-shrink:0;border-bottom:1px solid var(--border);padding:18px 16px;cursor:pointer;transition:background 0.2s;position:relative;overflow:hidden;text-align:center;}
+  .spl-drop::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(45deg,transparent,transparent 12px,rgba(0,255,65,0.006) 12px,rgba(0,255,65,0.006) 24px);}
+  .spl-drop:hover,.spl-drop.dragover{background:var(--green-dark);}
+  .spl-drop:hover .spl-drop-icon,.spl-drop.dragover .spl-drop-icon{color:var(--green);text-shadow:0 0 16px var(--green);}
+  .spl-drop-icon{font-family:'VT323',monospace;font-size:42px;color:var(--text-dim);display:block;line-height:1;margin-bottom:6px;transition:all 0.2s;}
+  .spl-drop-title{font-family:'Orbitron',monospace;font-weight:700;font-size:10px;letter-spacing:2px;color:var(--green);margin-bottom:3px;}
+  .spl-drop-sub{font-size:11px;color:var(--text-mid);}
+  .spl-from-explorer{flex-shrink:0;padding:8px 16px;border-bottom:1px solid var(--border);}
+  .btn-from-explorer{width:100%;font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:2px;padding:7px;border:1px solid var(--border);background:transparent;color:var(--text-dim);cursor:pointer;transition:all 0.2s;text-align:center;}
+  .btn-from-explorer:hover{color:var(--amber);border-color:var(--amber);}
+  .spl-file-info{flex:1;overflow-y:auto;padding:12px 14px;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+  .spl-info-row{display:flex;flex-direction:column;margin-bottom:10px;}
+  .spl-info-key{font-size:9px;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:2px;}
+  .spl-info-val{font-size:12px;color:var(--text);word-break:break-all;}
+  .spl-info-val.green{color:var(--green);}
+  .spl-info-val.amber{color:var(--amber);}
+  .spl-info-val.dim{color:var(--text-dim);}
+  .spl-error{color:var(--red);font-size:12px;line-height:1.7;padding:10px 0;}
+  .spl-section-title{flex-shrink:0;padding:10px 16px;border-bottom:1px solid var(--border);font-family:'Orbitron',monospace;font-size:9px;letter-spacing:3px;color:var(--text-dim);display:flex;justify-content:space-between;align-items:center;}
+  .spl-modes{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:12px 14px;flex-shrink:0;border-bottom:1px solid var(--border);}
+  .spl-mode-btn{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);cursor:pointer;transition:all 0.15s;background:transparent;}
+  .spl-mode-btn:hover{border-color:var(--text-dim);background:rgba(255,255,255,0.02);}
+  .spl-mode-btn.active{border-color:var(--green);background:rgba(0,255,65,0.06);}
+  .spl-mode-icon{font-family:'VT323',monospace;font-size:18px;color:var(--text-dim);flex-shrink:0;transition:color 0.15s;}
+  .spl-mode-btn.active .spl-mode-icon{color:var(--green);}
+  .spl-mode-label{font-size:11px;color:var(--text-mid);letter-spacing:1px;transition:color 0.15s;flex:1;}
+  .spl-mode-btn.active .spl-mode-label{color:var(--text);}
+  .spl-mode-check{font-family:'VT323',monospace;font-size:14px;color:var(--green);flex-shrink:0;width:14px;text-align:right;}
+  .spl-section-hint{font-size:10px;color:var(--text-dim);letter-spacing:1px;}
+  .btn-reset-modes{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:1px;padding:3px 8px;border:1px solid var(--border);background:transparent;color:var(--text-dim);cursor:pointer;transition:all 0.15s;}
+  .btn-reset-modes:hover{border-color:var(--red);color:var(--red);}
+  .spl-mode-desc-row{flex-shrink:0;padding:8px 14px;border-bottom:1px solid var(--border);min-height:32px;}
+  .spl-mode-desc-text{font-size:11px;color:var(--text-dim);line-height:1.6;}
+  .spl-progress{display:none;flex-shrink:0;flex-direction:column;gap:5px;padding:10px 14px;border-bottom:1px solid var(--border);background:rgba(0,255,65,0.02);}
+  .spl-progress.visible{display:flex;}
+  .spl-progress-label{font-size:11px;color:var(--text-mid);display:flex;justify-content:space-between;}
+  .spl-progress-label span{color:var(--green);}
+  .spl-progress-bar{height:4px;background:#111;border:1px solid var(--border);overflow:hidden;}
+  .spl-progress-fill{height:100%;background:linear-gradient(90deg,var(--green-dim),var(--green));box-shadow:0 0 6px var(--green);width:0%;transition:width 0.3s ease;}
+  .spl-preview-header-row{flex-shrink:0;padding:10px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--text-dim);}
+  .spl-preview-header-row span{font-family:'Orbitron',monospace;letter-spacing:2px;}
+  .spl-toggle-btns{display:flex;gap:6px;}
+  .btn-toggle-all{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:1px;padding:3px 8px;border:1px solid var(--border);background:transparent;color:var(--text-dim);cursor:pointer;transition:all 0.15s;}
+  .btn-toggle-all:hover{border-color:var(--green-dim);color:var(--text);}
+  .spl-preview-list{flex:1;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+  .spl-preview-empty{display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-dim);font-size:11px;letter-spacing:2px;}
+  .spl-preview-row{display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid rgba(46,46,46,0.4);transition:background 0.1s;}
+  .spl-preview-row:hover{background:rgba(255,255,255,0.02);}
+  .spl-preview-row.disabled{opacity:0.4;}
+  .spl-preview-check{flex-shrink:0;cursor:pointer;width:20px;text-align:center;}
+  .spl-check-icon{font-family:'VT323',monospace;font-size:16px;color:var(--green);}
+  .spl-preview-row.disabled .spl-check-icon{color:var(--text-dim);}
+  .spl-preview-info{flex:1;min-width:0;}
+  .spl-preview-label{font-size:12px;color:var(--text);margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .spl-preview-filename{font-size:10px;color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .spl-preview-count{flex-shrink:0;text-align:right;}
+  .spl-count-num{display:block;font-size:14px;color:var(--green);font-family:'VT323',monospace;line-height:1;}
+  .spl-count-lbl{display:block;font-size:9px;color:var(--text-dim);letter-spacing:1px;}
+  .spl-save-section{flex-shrink:0;padding:12px 14px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px;}
+  .spl-output-row{display:flex;align-items:center;gap:8px;}
+  .spl-output-label{font-size:10px;color:var(--text-dim);letter-spacing:1px;flex-shrink:0;}
+  .spl-output-path{font-size:11px;color:var(--amber);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;}
+  .spl-output-path:hover{color:var(--green);}
+  .btn-choose-folder{font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:1px;padding:4px 10px;border:1px solid var(--border);background:transparent;color:var(--text-dim);cursor:pointer;transition:all 0.15s;flex-shrink:0;}
+  .btn-choose-folder:hover{border-color:var(--amber);color:var(--amber);}
+  .btn-split-save{width:100%;font-family:'Orbitron',monospace;font-weight:700;font-size:11px;letter-spacing:2px;padding:11px;border:1px solid var(--green-dim);background:var(--green-dark);color:var(--green);cursor:pointer;transition:all 0.2s;text-align:center;}
+  .btn-split-save:hover:not(:disabled){border-color:var(--green);background:rgba(0,255,65,0.12);box-shadow:0 0 12px var(--green-dark);}
+  .btn-split-save:disabled{opacity:0.3;cursor:default;}
+  .spl-summary{padding:0 14px 14px;}
+  .spl-summary-box{border:1px solid var(--green-dim);padding:14px;background:rgba(0,255,65,0.03);}
+  .spl-summary-title{font-family:'Orbitron',monospace;font-size:11px;letter-spacing:3px;color:var(--green);margin-bottom:8px;}
+  .spl-summary-stats{font-size:12px;color:var(--text-mid);margin-bottom:8px;display:flex;gap:8px;flex-wrap:wrap;}
+  .spl-summary-stats .sep{color:var(--text-dim);}
+  .spl-summary-stats .green{color:var(--green);}
+  .spl-summary-folder{font-size:11px;color:var(--amber);cursor:pointer;padding:6px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin-bottom:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .spl-summary-folder:hover{color:var(--green);}
+  .spl-summary-rows{display:flex;flex-direction:column;gap:3px;max-height:180px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+  .spl-sum-row{display:flex;justify-content:space-between;font-size:11px;padding:2px 0;}
+  .spl-sum-label{color:var(--text-mid);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .spl-sum-count{color:var(--green);flex-shrink:0;margin-left:8px;font-family:'VT323',monospace;font-size:14px;}
+
+  /* MODULE 05 — DAT DIFF */
+  .diff-screen{flex-direction:row;}
+  /* Left: file loading panel */
+  .diff-left{width:270px;flex-shrink:0;display:flex;flex-direction:column;border-right:1px solid var(--border);overflow:hidden;}
+  .diff-mode-tabs{display:flex;flex-shrink:0;border-bottom:1px solid var(--border);}
+  .diff-tab{flex:1;padding:9px 0;font-family:'Orbitron',monospace;font-size:9px;letter-spacing:2px;color:var(--text-dim);text-align:center;cursor:pointer;border-bottom:2px solid transparent;transition:all 0.15s;}
+  .diff-tab.active{color:var(--green);border-bottom-color:var(--green);}
+  .diff-tab:hover:not(.active){color:var(--text);}
+  .diff-slots{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:0;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+  .diff-slot{flex-shrink:0;border-bottom:1px solid var(--border);}
+  .diff-slot-header{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:rgba(0,0,0,0.2);}
+  .diff-slot-label{font-family:'Orbitron',monospace;font-size:9px;letter-spacing:2px;}
+  .diff-slot-label.a{color:var(--green);}
+  .diff-slot-label.b{color:var(--amber);}
+  .diff-slot-label.master{color:var(--green);}
+  .diff-slot-label.secondary{color:#7cb8ff;}
+  .diff-slot-sublabel{display:block;font-size:9px;color:var(--text-dim);letter-spacing:1px;margin-top:2px;font-family:'Share Tech Mono',monospace;}
+  .diff-slot-clear{font-family:'VT323',monospace;font-size:16px;color:var(--text-dim);cursor:pointer;padding:0 4px;background:none;border:none;}
+  .diff-slot-clear:hover{color:var(--red);}
+  .diff-slot-drop{padding:12px;text-align:center;cursor:pointer;transition:background 0.2s;min-height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;position:relative;overflow:hidden;}
+  .diff-slot-drop::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(45deg,transparent,transparent 10px,rgba(0,255,65,0.004) 10px,rgba(0,255,65,0.004) 20px);}
+  .diff-slot-drop:hover,.diff-slot-drop.dragover{background:var(--green-dark);}
+  .diff-slot-drop.has-file{cursor:default;background:rgba(0,255,65,0.02);}
+  .diff-slot-drop.has-file:hover{background:rgba(0,255,65,0.04);}
+  .diff-slot-icon{font-family:'VT323',monospace;font-size:26px;color:var(--text-dim);transition:color 0.15s;}
+  .diff-slot-drop:hover .diff-slot-icon,.diff-slot-drop.dragover .diff-slot-icon{color:var(--green);}
+  .diff-slot-name{font-size:11px;color:var(--text);word-break:break-all;line-height:1.4;}
+  .diff-slot-meta{font-size:10px;color:var(--text-dim);}
+  .diff-slot-meta.green{color:var(--green);}
+  .diff-slot-meta.amber{color:var(--amber);}
+  .diff-slot-hint{font-size:10px;color:var(--text-dim);letter-spacing:1px;}
+  .diff-add-btn{margin:8px 12px;font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:2px;padding:7px;border:1px dashed var(--border);background:transparent;color:var(--text-dim);cursor:pointer;transition:all 0.2s;width:calc(100% - 24px);}
+  .diff-add-btn:hover{border-color:var(--text-dim);color:var(--text);}
+  .diff-run-row{flex-shrink:0;padding:12px;border-top:1px solid var(--border);}
+  .diff-compare-btn{width:100%;font-family:'Orbitron',monospace;font-weight:700;font-size:10px;letter-spacing:2px;padding:10px;border:1px solid var(--green-dim);background:var(--green-dark);color:var(--green);cursor:pointer;transition:all 0.2s;}
+  .diff-compare-btn:hover:not(:disabled){border-color:var(--green);box-shadow:0 0 10px var(--green-dark);}
+  .diff-compare-btn:disabled{opacity:0.3;cursor:default;}
+  /* Center: results diff viewer */
+  .diff-center{flex:1;display:flex;flex-direction:column;min-width:0;border-right:1px solid var(--border);}
+  .diff-tabs-row{display:flex;flex-shrink:0;border-bottom:1px solid var(--border);background:rgba(0,0,0,0.15);}
+  .diff-result-tab{flex:1;padding:10px 0;font-family:'Orbitron',monospace;font-size:9px;letter-spacing:2px;text-align:center;cursor:pointer;border-bottom:2px solid transparent;transition:all 0.15s;position:relative;}
+  .diff-result-tab.only-a{color:var(--green);}
+  .diff-result-tab.only-b{color:var(--amber);}
+  .diff-result-tab.common{color:var(--text-dim);}
+  .diff-result-tab.active{border-bottom-color:currentColor;background:rgba(255,255,255,0.02);}
+  .diff-result-tab:hover:not(.active){background:rgba(255,255,255,0.01);}
+  .diff-tab-badge{display:inline-block;margin-left:6px;font-size:10px;font-family:'VT323',monospace;}
+  .diff-search-row{flex-shrink:0;display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);}
+  .diff-search{flex:1;background:transparent;border:1px solid var(--border);color:var(--text);font-family:'Share Tech Mono',monospace;font-size:11px;padding:5px 8px;outline:none;transition:border-color 0.15s;}
+  .diff-search:focus{border-color:var(--green-dim);}
+  .diff-search::placeholder{color:var(--text-dim);}
+  .diff-sort-btn{font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:1px;padding:4px 10px;border:1px solid var(--border);background:transparent;color:var(--text-dim);cursor:pointer;transition:all 0.15s;white-space:nowrap;}
+  .diff-sort-btn:hover{border-color:var(--text-dim);color:var(--text);}
+  .diff-list{flex:1;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+  .diff-empty{display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-dim);font-size:11px;letter-spacing:2px;flex-direction:column;gap:8px;}
+  .diff-empty .big{font-family:'VT323',monospace;font-size:52px;opacity:0.3;}
+  .diff-entry-row{display:flex;align-items:center;gap:10px;padding:7px 12px;border-bottom:1px solid rgba(46,46,46,0.35);cursor:pointer;transition:background 0.1s;}
+  .diff-entry-row:hover{background:rgba(255,255,255,0.02);}
+  .diff-entry-row.selected{background:rgba(0,255,65,0.05);border-left:2px solid var(--green);}
+  .diff-entry-cb{flex-shrink:0;width:18px;height:18px;cursor:pointer;accent-color:var(--green);}
+  .diff-entry-name{flex:1;font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .diff-entry-roms{flex-shrink:0;font-family:'VT323',monospace;font-size:14px;color:var(--text-dim);}
+  .diff-entry-tag{flex-shrink:0;font-size:9px;letter-spacing:1px;padding:1px 5px;border:1px solid;}
+  .diff-entry-tag.only-a{color:var(--green);border-color:var(--green-dim);}
+  .diff-entry-tag.only-b{color:var(--amber);border-color:var(--amber);}
+  .diff-entry-tag.common{color:var(--text-dim);border-color:var(--border);}
+  /* Right: export panel */
+  .diff-right{width:300px;flex-shrink:0;display:flex;flex-direction:column;overflow:hidden;}
+  .diff-export-summary{flex-shrink:0;padding:12px 14px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:6px;}
+  .diff-stat-row{display:flex;justify-content:space-between;align-items:center;font-size:11px;}
+  .diff-stat-label{color:var(--text-dim);letter-spacing:1px;}
+  .diff-stat-val{font-family:'VT323',monospace;font-size:16px;}
+  .diff-stat-val.green{color:var(--green);}
+  .diff-stat-val.amber{color:var(--amber);}
+  .diff-stat-val.dim{color:var(--text-dim);}
+  .diff-export-opts{flex:1;overflow-y:auto;padding:12px 14px;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+  .diff-export-group{margin-bottom:16px;}
+  .diff-export-group-title{font-family:'Orbitron',monospace;font-size:9px;letter-spacing:3px;color:var(--text-dim);margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border);}
+  .diff-export-option{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(46,46,46,0.3);cursor:pointer;}
+  .diff-export-option:hover .diff-export-opt-label{color:var(--text);}
+  .diff-export-cb{flex-shrink:0;width:16px;height:16px;cursor:pointer;accent-color:var(--green);}
+  .diff-export-opt-info{flex:1;}
+  .diff-export-opt-label{font-size:11px;color:var(--text-mid);transition:color 0.15s;}
+  .diff-export-opt-desc{font-size:10px;color:var(--text-dim);margin-top:2px;}
+  .diff-export-count{flex-shrink:0;font-family:'VT323',monospace;font-size:16px;color:var(--green);}
+  .diff-output-row{flex-shrink:0;padding:10px 14px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px;}
+  .diff-output-label{font-size:10px;color:var(--text-dim);letter-spacing:1px;flex-shrink:0;}
+  .diff-output-path{font-size:11px;color:var(--amber);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;}
+  .diff-output-path:hover{color:var(--green);}
+  .diff-save-btn{width:calc(100% - 28px);margin:0 14px 12px;font-family:'Orbitron',monospace;font-weight:700;font-size:10px;letter-spacing:2px;padding:10px;border:1px solid var(--green-dim);background:var(--green-dark);color:var(--green);cursor:pointer;transition:all 0.2s;flex-shrink:0;}
+  .diff-save-btn:hover:not(:disabled){border-color:var(--green);box-shadow:0 0 10px var(--green-dark);}
+  .diff-save-btn:disabled{opacity:0.3;cursor:default;}
+  .diff-summary{padding:0 14px 14px;flex-shrink:0;}
+  .diff-progress{display:none;flex-direction:column;gap:5px;padding:8px 14px;border-bottom:1px solid var(--border);background:rgba(0,255,65,0.02);flex-shrink:0;}
+  .diff-progress.visible{display:flex;}
+  .diff-progress-label{font-size:11px;color:var(--text-mid);display:flex;justify-content:space-between;}
+  .diff-progress-label span{color:var(--green);}
+  .diff-progress-bar{height:3px;background:#111;border:1px solid var(--border);overflow:hidden;}
+  .diff-progress-fill{height:100%;background:linear-gradient(90deg,var(--green-dim),var(--green));width:0%;transition:width 0.25s ease;}
+
+  /* MODULE 03 — CHECKSUM */
+  .checksum-screen{flex-direction:column;}
+  .chk-layout{flex:1;display:flex;flex-direction:column;min-height:0;}
+  .chk-drop{flex-shrink:0;margin:16px 20px 0;border:1px dashed var(--border);padding:20px;text-align:center;cursor:pointer;transition:all 0.2s;position:relative;overflow:hidden;}
+  .chk-drop::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(45deg,transparent,transparent 12px,rgba(0,255,65,0.007) 12px,rgba(0,255,65,0.007) 24px);}
+  .chk-drop:hover,.chk-drop.dragover{border-color:var(--green);background:var(--green-dark);}
+  .chk-drop:hover .chk-drop-icon,.chk-drop.dragover .chk-drop-icon{color:var(--green);text-shadow:0 0 20px var(--green);}
+  .chk-drop-icon{font-family:'VT323',monospace;font-size:44px;color:var(--text-dim);display:block;line-height:1;margin-bottom:8px;transition:all 0.2s;}
+  .chk-drop-title{font-family:'Orbitron',monospace;font-weight:700;font-size:11px;letter-spacing:3px;color:var(--green);margin-bottom:4px;}
+  .chk-drop-sub{font-size:11px;color:var(--text-mid);}
+  .chk-controls{flex-shrink:0;display:flex;align-items:center;gap:12px;padding:10px 20px;border-bottom:1px solid var(--border);margin-top:16px;}
+  .chk-algo-label{font-size:10px;color:var(--text-mid);letter-spacing:1px;}
+  .chk-algo-btn{font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:1px;padding:4px 12px;border:1px solid var(--border);background:transparent;color:var(--text-dim);cursor:pointer;transition:all 0.2s;}
+  .chk-algo-btn.active{border-color:var(--green);color:var(--green);background:rgba(0,255,65,0.08);}
+  .chk-algo-btn:hover:not(.active){border-color:var(--text-dim);color:var(--text);}
+  .chk-spacer{flex:1;}
+  .chk-clear-btn{font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:1px;padding:4px 12px;border:1px solid var(--border);background:transparent;color:var(--text-dim);cursor:pointer;transition:all 0.2s;}
+  .chk-clear-btn:hover{border-color:var(--red);color:var(--red);}
+  .chk-results{flex:1;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent;padding:0 20px 20px;}
+  .chk-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text-dim);gap:8px;}
+  .chk-empty .big{font-family:'VT323',monospace;font-size:48px;}
+  .chk-empty span{font-size:12px;letter-spacing:1px;text-align:center;line-height:1.8;}
+  .chk-file-card{border:1px solid var(--border);margin-top:12px;background:var(--panel);animation:fadeIn 0.2s ease;}
+  .chk-file-header{display:flex;align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid var(--border);background:rgba(0,255,65,0.03);}
+  .chk-file-icon{font-family:'VT323',monospace;font-size:22px;color:var(--green-dim);}
+  .chk-file-name{flex:1;font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .chk-file-size{font-size:11px;color:var(--text-dim);flex-shrink:0;}
+  .chk-hashes{padding:12px 16px;display:flex;flex-direction:column;gap:10px;}
+  .chk-hash-row{display:flex;align-items:center;gap:12px;}
+  .chk-hash-key{font-size:12px;color:var(--text-dim);width:58px;flex-shrink:0;letter-spacing:1px;}
+  .chk-hash-val{flex:1;font-size:13px;color:var(--amber);font-family:'Share Tech Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .chk-hash-val.computing{color:var(--text-dim);font-style:italic;animation:blink 1s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+  /* COPY button — verde scuro di default, verde brillante al hover/click */
+  .chk-copy-btn{font-size:10px;padding:3px 9px;border:1px solid var(--green-dim);background:var(--green-dark);color:var(--green-dim);cursor:pointer;letter-spacing:1px;transition:all 0.15s;font-family:'Share Tech Mono',monospace;flex-shrink:0;}
+  .chk-copy-btn:hover{border-color:var(--green);color:var(--green);background:rgba(0,255,65,0.15);box-shadow:0 0 8px rgba(0,255,65,0.2);}
+  .chk-copy-btn.copied{border-color:var(--green);color:var(--green);background:rgba(0,255,65,0.2);box-shadow:0 0 10px rgba(0,255,65,0.3);}
+  .chk-verify-row{padding:9px 16px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px;}
+  .chk-verify-input{flex:1;background:#080808;border:1px solid var(--border);color:var(--text-mid);font-family:'Share Tech Mono',monospace;font-size:12px;padding:5px 10px;outline:none;user-select:text;transition:border-color 0.2s;}
+  .chk-verify-input:focus{border-color:var(--text-dim);}
+  .chk-verify-input::placeholder{color:var(--text-dim);}
+  .chk-verify-label{font-size:11px;color:var(--text-dim);letter-spacing:1px;flex-shrink:0;}
+  .chk-verify-result{font-size:12px;flex-shrink:0;font-weight:bold;}
+  .chk-verify-result.match{color:var(--green);}
+  .chk-verify-result.mismatch{color:var(--red);}
+
+  /* PROGRESS */
+  .progress-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:5000;align-items:center;justify-content:center;}
+  .progress-overlay.visible{display:flex;}
+  .progress-box{background:var(--panel);border:1px solid var(--green-dim);box-shadow:0 0 40px rgba(0,255,65,0.15);width:580px;padding:28px 32px;position:relative;animation:popIn 0.2s ease;}
+  .progress-box::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(0,255,65,0.04),transparent 50%);pointer-events:none;}
+  .prog-title{font-family:'Orbitron',monospace;font-weight:700;font-size:10px;letter-spacing:3px;color:var(--green-dim);margin-bottom:18px;display:flex;align-items:center;gap:10px;}
+  .prog-title::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--green-dim),transparent);}
+  .prog-current-file{font-size:12px;color:var(--amber);margin-bottom:12px;min-height:18px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .prog-bar-wrap{height:8px;background:#111;border:1px solid var(--border);margin-bottom:10px;overflow:hidden;}
+  .prog-bar-fill{height:100%;background:linear-gradient(90deg,var(--green-dim),var(--green));box-shadow:0 0 10px var(--green);width:0%;transition:width 0.25s ease;}
+  .prog-stats-row{display:flex;justify-content:space-between;font-size:11px;color:var(--text-mid);margin-bottom:16px;}
+  .prog-pct{color:var(--green);font-size:13px;}
+  .prog-log{height:160px;overflow-y:auto;background:rgba(0,0,0,0.4);border:1px solid var(--border);padding:8px 12px;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+  .prog-log .log-line{font-size:11px;line-height:1.7;display:flex;gap:8px;}
+  .prog-log .log-time{color:var(--text-dim);flex-shrink:0;}
+  .prog-log .log-msg{color:var(--text-mid);}
+  .prog-log .log-msg.ok{color:var(--green);}
+  .prog-log .log-msg.warn{color:var(--amber);}
+  .prog-log .log-msg.err{color:var(--red);}
+
+  /* SUMMARY */
+  .summary-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:6000;align-items:center;justify-content:center;}
+  .summary-overlay.visible{display:flex;}
+  .summary-box{background:var(--panel);border:1px solid var(--green-dim);box-shadow:0 0 40px rgba(0,255,65,0.2);width:480px;position:relative;animation:popIn 0.2s ease;}
+  .summary-box::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(0,255,65,0.05),transparent 50%);pointer-events:none;}
+  .summary-header{padding:14px 20px;border-bottom:1px solid var(--border);background:rgba(0,255,65,0.04);}
+  .summary-title{font-family:'Orbitron',monospace;font-size:11px;font-weight:700;letter-spacing:3px;color:var(--green);}
+  .summary-body{padding:24px 20px;}
+  .summary-check{font-family:'VT323',monospace;font-size:52px;color:var(--green);text-shadow:0 0 20px var(--green);text-align:center;display:block;margin-bottom:16px;}
+  .summary-row{display:flex;justify-content:space-between;align-items:baseline;padding:8px 0;border-bottom:1px solid rgba(46,46,46,0.5);font-size:12px;}
+  .summary-key{color:var(--text-mid);}
+  .summary-val{color:var(--text);}
+  .summary-val.green{color:var(--green);font-family:'VT323',monospace;font-size:20px;}
+  .summary-val.amber{color:var(--amber);font-family:'VT323',monospace;font-size:20px;}
+  .summary-footer{padding:16px 20px;border-top:1px solid var(--border);text-align:center;}
+  .btn-ok{font-family:'Orbitron',monospace;font-weight:700;font-size:12px;letter-spacing:4px;color:var(--bg);background:var(--green);border:none;padding:12px 48px;cursor:pointer;transition:all 0.2s;clip-path:polygon(8px 0%,100% 0%,calc(100% - 8px) 100%,0% 100%);}
+  .btn-ok:hover{background:#00ff41;box-shadow:0 0 24px var(--green);letter-spacing:6px;}
+
+  /* CREDITS */
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:10000;align-items:center;justify-content:center;}
+  .modal-overlay.open{display:flex;}
+  .modal{background:var(--panel);border:1px solid var(--border);width:440px;position:relative;animation:modalIn 0.2s ease;max-height:90vh;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+  @keyframes modalIn{from{opacity:0;transform:scale(0.95)}to{opacity:1;transform:scale(1)}}
+  .modal-header{padding:13px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;background:rgba(0,255,65,0.03);position:sticky;top:0;z-index:1;}
+  .modal-title{font-family:'Orbitron',monospace;font-size:10px;font-weight:700;letter-spacing:3px;color:var(--green-dim);flex:1;}
+  .modal-close{font-family:'VT323',monospace;font-size:22px;color:var(--text-dim);background:none;border:none;cursor:pointer;line-height:1;padding:0 4px;transition:color 0.2s;}
+  .modal-close:hover{color:var(--red);}
+  .modal-body{padding:22px;}
+  .credits-logo{font-family:'Orbitron',monospace;font-weight:900;font-size:24px;color:var(--green);text-shadow:0 0 20px var(--green),0 0 40px var(--green-dim);letter-spacing:4px;margin-bottom:4px;}
+  .credits-logo span{color:var(--amber);text-shadow:0 0 20px var(--amber);}
+  .credits-tagline{font-family:'VT323',monospace;font-size:15px;color:var(--text-mid);letter-spacing:2px;margin-bottom:18px;}
+  .credits-divider{height:1px;background:linear-gradient(90deg,var(--green-dim),transparent);margin:14px 0;}
+  .credits-section-label{font-family:'Orbitron',monospace;font-size:8px;font-weight:700;letter-spacing:3px;color:var(--green-dim);text-transform:uppercase;margin:12px 0 6px;}
+  .credits-row{display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid rgba(46,46,46,0.5);}
+  .credits-key{color:var(--text-mid);}
+  .credits-val{color:var(--text);}
+  .credits-val.green{color:var(--green);}
+  .credits-val.amber{color:var(--amber);}
+  .credits-thanks{display:flex;flex-direction:column;gap:10px;padding:12px 14px;border:1px solid var(--border);background:rgba(0,0,0,0.2);}
+  .thanks-block{display:flex;flex-direction:column;gap:3px;}
+  .thanks-name{font-size:13px;color:var(--amber);}
+  .thanks-role{font-size:11px;color:var(--text-mid);}
+  .thanks-group{display:flex;flex-direction:column;gap:3px;padding-top:8px;border-top:1px solid var(--border);}
+  .thanks-label{font-size:12px;color:var(--green);}
+  .thanks-members{font-size:11px;color:var(--text-mid);letter-spacing:1px;}
+  .credits-github{margin-top:18px;padding:12px 14px;border:1px solid var(--border);display:flex;align-items:center;gap:12px;cursor:pointer;transition:all 0.2s;text-decoration:none;}
+  .credits-github:hover{border-color:var(--green);background:var(--green-dark);}
+  .credits-github-icon{font-family:'VT323',monospace;font-size:32px;color:var(--text-mid);line-height:1;transition:color 0.2s;}
+  .credits-github:hover .credits-github-icon{color:var(--green);}
+  .gh-label{font-size:10px;letter-spacing:2px;color:var(--text-mid);text-transform:uppercase;}
+  .gh-url{font-size:13px;color:var(--green);margin-top:2px;}
+  .credits-note{margin-top:14px;font-size:11px;color:var(--text-mid);line-height:1.8;text-align:center;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">DAT<span>//</span>ROMMANAGER</div>
+  <div class="tagline" id="header-tagline">UNIVERSAL DAT MANAGEMENT TOOLKIT · v0.9.0-beta</div>
+  <div class="hdr-right">
+    <div class="status-pill"><div class="status-dot"></div><span id="status-text">READY</span></div>
+    <button class="btn-home" id="btn-home" onclick="goHome()" style="display:none">⌂ HOME</button>
+    <button class="btn-docs" onclick="goTo('docs','DOCUMENTATION')">? DOCS</button>
+    <button class="btn-credits" onclick="openCredits()">CREDITS</button>
+  </div>
+</header>
+
+<!-- UPDATE BANNER -->
+<div class="update-banner" id="update-banner">
+  <div class="update-dot"></div>
+  <div class="update-text">New version available: <strong id="update-version">—</strong></div>
+  <span class="update-whatsnew" onclick="openWhatsNew()">What's new?</span>
+  <button class="btn-update-go" onclick="gotoGithubRelease()">↗ DOWNLOAD</button>
+  <button class="btn-update-dismiss" onclick="dismissUpdate()" title="Dismiss">✕</button>
+</div>
+
+<!-- HOME -->
+<div class="screen home-screen active" id="screen-home">
+  <div class="home-intro">
+    <div class="home-title">SELECT MODULE</div>
+    <div class="home-sub">Choose a function to get started</div>
+  </div>
+  <div class="module-grid" id="module-grid">
+    <!-- populated by JS -->
+  </div>
+  <div class="module-pagination" id="module-pagination" style="display:none">
+    <button class="btn-page" id="btn-prev" onclick="changePage(-1)">◀ PREV</button>
+    <span class="page-indicator" id="page-indicator">PAGE 1 / 2</span>
+    <button class="btn-page" id="btn-next" onclick="changePage(1)">NEXT ▶</button>
+  </div>
+  <div class="home-credit">Made with love &amp; fun by <span>Andrea Luca Bozzalla</span> &amp; <span>Claude</span> · Anthropic AI</div>
+</div>
+
+<!-- MODULE 01 -->
+<div class="screen merger-screen" id="screen-merger">
+  <div class="breadcrumb"><span class="bc-home" onclick="goHome()">⌂ HOME</span><span class="bc-sep">›</span><span>01 // DAT MERGER</span></div>
+  <div class="workspace">
+    <div class="left-col">
+      <div class="drop-area" id="drop-area" onclick="selectFolder()">
+        <span class="drop-icon">⊞</span>
+        <div>
+          <div class="drop-title">CLICK TO SELECT FOLDER · OR DRAG & DROP</div>
+          <div class="drop-sub">Recursively scans all subfolders<br>Supports <em>.dat (XML Logiqx)</em> · <em>.dat (ClrMamePro)</em> · <em>.xml</em></div>
+        </div>
+      </div>
+      <div class="section-hdr"><div class="section-title">LOADED FILES</div><div class="section-badge" id="badge-files">—</div></div>
+      <div class="file-list" id="file-list"><div class="empty-list"><span class="big">[ ]</span><span>No files loaded yet</span></div></div>
+    </div>
+    <div class="right-col">
+      <div class="section-hdr"><div class="section-title">STATISTICS</div></div>
+      <div class="stats-strip">
+        <div class="stat-cell"><div class="stat-label">DAT Files</div><div class="stat-val" id="stat-files">0</div></div>
+        <div class="stat-cell"><div class="stat-label">Total Games</div><div class="stat-val" id="stat-games">0</div></div>
+        <div class="stat-cell"><div class="stat-label">Total ROMs</div><div class="stat-val am" id="stat-roms">0</div></div>
+        <div class="stat-cell"><div class="stat-label">Converted CLR</div><div class="stat-val am" id="stat-converted">0</div></div>
+      </div>
+      <div class="section-hdr"><div class="section-title">MERGE CONFIG</div></div>
+      <div class="config-scroll">
+        <div class="cfg-row"><div><div class="cfg-lbl">Output filename</div><div class="cfg-hint">Output .dat file name</div></div><input type="text" id="cfg-name" value="merged_set"></div>
+        <div class="cfg-row"><div><div class="cfg-lbl">Version</div><div class="cfg-hint">Version string in header</div></div><input type="text" id="cfg-version" value="1.0"></div>
+        <div class="cfg-row"><div><div class="cfg-lbl">Author</div><div class="cfg-hint">Author field in header</div></div><input type="text" id="cfg-author" value="DAT//MERGER"></div>
+        <div class="cfg-row"><div><div class="cfg-lbl">Keep duplicates</div><div class="cfg-hint">Include all entries even if identical</div></div><label class="toggle"><input type="checkbox" id="cfg-dupes" checked><span class="toggle-sl"></span></label></div>
+        <div class="cfg-row"><div><div class="cfg-lbl">Source prefix</div><div class="cfg-hint">Prepend source DAT name to entry</div></div><label class="toggle"><input type="checkbox" id="cfg-prefix"><span class="toggle-sl"></span></label></div>
+      </div>
+      <div class="section-hdr"><div class="section-title">LOG</div></div>
+      <div class="log-area" id="log-area"><div class="log-line"><span class="log-time">00:00:00</span><span class="log-msg ok">System initialized. Ready to process.</span></div></div>
+      <div class="merge-btn-wrap"><button class="btn-merge" id="btn-merge" disabled onclick="runMerge()">▶ MERGE ALL</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODULE 02 -->
+<div class="screen explorer-screen" id="screen-explorer">
+  <div class="breadcrumb"><span class="bc-home" onclick="goHome()">⌂ HOME</span><span class="bc-sep">›</span><span>02 // DAT EXPLORER</span></div>
+  <div class="exp-layout">
+    <div class="exp-left">
+      <div class="exp-drop" id="exp-drop" onclick="selectDatFile()">
+        <span class="exp-drop-icon">◉</span>
+        <div class="exp-drop-title">LOAD DAT FILE</div>
+        <div class="exp-drop-sub">Click or drag a .dat / .xml</div>
+      </div>
+      <div class="dat-info">
+        <div class="info-group">
+          <div class="info-group-title">DAT INFO</div>
+          <div class="info-field"><span class="info-key">Name</span><span class="info-val dim" id="ei-name">—</span></div>
+          <div class="info-field"><span class="info-key">Description</span><span class="info-val dim" id="ei-desc">—</span></div>
+          <div class="info-field"><span class="info-key">Category</span><span class="info-val dim" id="ei-cat">—</span></div>
+          <div class="info-field"><span class="info-key">Version</span><span class="info-val dim" id="ei-ver">—</span></div>
+          <div class="info-field"><span class="info-key">Date</span><span class="info-val dim" id="ei-date">—</span></div>
+          <div class="info-field"><span class="info-key">Author</span><span class="info-val dim" id="ei-author">—</span></div>
+          <div class="info-field"><span class="info-key">Homepage</span><span class="info-val dim" id="ei-home">—</span></div>
+          <div class="info-field"><span class="info-key">URL</span><span class="info-val dim" id="ei-url">—</span></div>
+          <div class="info-field"><span class="info-key">ROM Path</span><span class="info-val dim" id="ei-path">—</span></div>
+        </div>
+        <div class="info-group">
+          <div class="info-group-title">STATISTICS</div>
+          <div class="info-field"><span class="info-key">Total entries</span><span class="info-val dim" id="ei-total">—</span></div>
+          <div class="info-field"><span class="info-key">Total ROMs</span><span class="info-val dim" id="ei-roms">—</span></div>
+          <div class="info-field"><span class="info-key">Format</span><span class="info-val dim" id="ei-fmt">—</span></div>
+          <div class="info-field"><span class="info-key">Encoding</span><span class="info-val dim" id="ei-enc">—</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="exp-center" id="exp-center">
+      <!-- Parse progress bar -->
+      <div class="exp-parse-progress" id="exp-parse-progress">
+        <div class="exp-parse-label"><span id="exp-parse-msg">Loading...</span><span id="exp-parse-pct">0%</span></div>
+        <div class="exp-parse-bar-wrap"><div class="exp-parse-bar-fill" id="exp-parse-bar"></div></div>
+      </div>
+      <div class="exp-sort-bar">
+        <span class="sort-label">SORT:</span>
+        <button class="sort-btn active" id="sort-az"    onclick="setSort('az')">A → Z</button>
+        <button class="sort-btn"        id="sort-za"    onclick="setSort('za')">Z → A</button>
+        <button class="sort-btn"        id="sort-rdesc" onclick="setSort('rdesc')">ROMs ↓</button>
+        <button class="sort-btn"        id="sort-rasc"  onclick="setSort('rasc')">ROMs ↑</button>
+        <div class="sort-spacer"></div>
+        <div class="section-badge" id="exp-badge">—</div>
+      </div>
+      <div class="exp-search">
+        <span class="exp-search-icon">⌕</span>
+        <input type="text" id="exp-search" placeholder="Search entries..." oninput="filterEntries(this.value)">
+        <span class="exp-count" id="exp-count"></span>
+      </div>
+      <div class="exp-entries-pane" id="exp-entries-pane" style="height:50%;">
+        <div class="rom-list" id="rom-list" tabindex="0">
+          <div class="exp-empty"><span class="big">[ ]</span><span>Load a DAT file to begin</span></div>
+        </div>
+      </div>
+      <div class="exp-splitter" id="exp-splitter"></div>
+      <div class="exp-detail-pane" id="exp-detail-pane" style="flex:1;">
+        <div class="section-hdr"><div class="section-title">ROM FILES</div><div class="section-badge" id="detail-badge">—</div></div>
+        <div class="rom-detail-list" id="rom-detail-list">
+          <div class="rom-detail-empty"><span class="big">◎</span><span>Select an entry to view ROM files</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="exp-right">
+      <div class="section-hdr"><div class="section-title">SYSTEM INFO</div></div>
+      <div class="sysinfo-body" id="sysinfo-body">
+        <div class="sysinfo-nodata"><span class="big">◈</span><span>Load a DAT file<br>to view system info</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODULE 03 -->
+<div class="screen checksum-screen" id="screen-checksum">
+  <div class="breadcrumb"><span class="bc-home" onclick="goHome()">⌂ HOME</span><span class="bc-sep">›</span><span>06 // CHECKSUM CALCULATOR</span></div>
+  <div class="chk-layout">
+    <div class="chk-drop" id="chk-drop" onclick="selectChecksumFiles()">
+      <span class="chk-drop-icon">⊟</span>
+      <div class="chk-drop-title">DROP FILES HERE · OR CLICK TO SELECT</div>
+      <div class="chk-drop-sub">Any file type · Multiple files supported</div>
+    </div>
+    <div class="chk-controls">
+      <span class="chk-algo-label">ALGORITHMS:</span>
+      <button class="chk-algo-btn active" id="algo-crc32"  onclick="toggleAlgo('crc32')">CRC32</button>
+      <button class="chk-algo-btn active" id="algo-md5"    onclick="toggleAlgo('md5')">MD5</button>
+      <button class="chk-algo-btn active" id="algo-sha1"   onclick="toggleAlgo('sha1')">SHA1</button>
+      <button class="chk-algo-btn active" id="algo-sha256" onclick="toggleAlgo('sha256')">SHA256</button>
+      <div class="chk-spacer"></div>
+      <button class="chk-clear-btn" onclick="clearChecksums()">✕ CLEAR</button>
+    </div>
+    <div class="chk-results" id="chk-results">
+      <div class="chk-empty"><span class="big">⊟</span><span>Drop files to compute checksums<br>CRC32 · MD5 · SHA1 · SHA256</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODULE 04 — DAT SPLITTER -->
+<div class="screen splitter-screen" id="screen-splitter">
+  <div class="breadcrumb"><span class="bc-home" onclick="goHome()">⌂ HOME</span><span class="bc-sep">›</span><span>03 // DAT SPLITTER</span></div>
+
+  <!-- LEFT: Drop + file info -->
+  <div class="spl-left">
+    <div class="spl-drop" id="spl-drop" onclick="selectSplitterFile()">
+      <span class="spl-drop-icon">◫</span>
+      <div class="spl-drop-title">DROP DAT FILE</div>
+      <div class="spl-drop-sub">or click to browse</div>
+    </div>
+    <div class="spl-from-explorer">
+      <button class="btn-from-explorer" onclick="loadFromExplorer()">⊞ USE DAT FROM EXPLORER</button>
+    </div>
+    <div class="spl-file-info" id="spl-file-info">
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:10px;color:var(--text-dim);">
+        <span style="font-family:'VT323',monospace;font-size:36px">◫</span>
+        <span style="font-size:11px;letter-spacing:1px;text-align:center">Drop a DAT file<br>to begin</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- CENTER: Split mode selector -->
+  <div class="spl-center">
+    <div class="spl-section-title">
+      <span>SPLIT MODE <span class="spl-section-hint">— click to select, click again to combine</span></span>
+      <button class="btn-reset-modes" onclick="resetSplitterModes()">RESET</button>
+    </div>
+    <div class="spl-modes" id="spl-modes"></div>
+    <div class="spl-mode-desc-row">
+      <div class="spl-mode-desc-text" id="spl-mode-desc"></div>
+    </div>
+    <div class="spl-progress" id="spl-progress">
+      <div class="spl-progress-label"><span id="spl-progress-msg">Loading...</span><span id="spl-progress-pct">0%</span></div>
+      <div class="spl-progress-bar"><div class="spl-progress-fill" id="spl-progress-fill"></div></div>
+    </div>
+    <div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--text-dim);font-size:11px;letter-spacing:2px;" id="spl-center-hint">
+      Load a DAT file to see split preview
+    </div>
+  </div>
+
+  <!-- RIGHT: Preview + save -->
+  <div class="spl-right">
+    <div class="spl-preview-header-row">
+      <span id="spl-preview-header">0 groups</span>
+      <div class="spl-toggle-btns">
+        <button class="btn-toggle-all" onclick="toggleAllGroups(true)">ALL</button>
+        <button class="btn-toggle-all" onclick="toggleAllGroups(false)">NONE</button>
+      </div>
+    </div>
+    <div class="spl-preview-list" id="spl-preview-list">
+      <div class="spl-preview-empty">No groups yet</div>
+    </div>
+    <div class="spl-save-section" id="spl-save-section" style="display:none">
+      <div class="spl-output-row">
+        <span class="spl-output-label">OUTPUT</span>
+        <span class="spl-output-path" id="spl-output-path" onclick="selectSplitOutputFolder()" title="Click to change folder">Click to choose folder...</span>
+        <button class="btn-choose-folder" onclick="selectSplitOutputFolder()">📁</button>
+      </div>
+      <button class="btn-split-save" id="spl-btn-save" onclick="runSplit()" disabled>▶ SPLIT &amp; SAVE</button>
+    </div>
+    <div class="spl-summary" id="spl-summary"></div>
+  </div>
+</div>
+
+<!-- MODULE 05 — DAT DIFF -->
+<div class="screen diff-screen" id="screen-diff">
+  <div class="breadcrumb"><span class="bc-home" onclick="goHome()">⌂ HOME</span><span class="bc-sep">›</span><span>04 // DAT DIFF</span></div>
+
+  <!-- LEFT — file loading -->
+  <div class="diff-left">
+    <div class="diff-mode-tabs">
+      <div class="diff-tab active" id="difftab-ab" onclick="setDiffMode('ab')">A vs B</div>
+      <div class="diff-tab" id="difftab-master" onclick="setDiffMode('master')">MASTER + N</div>
+    </div>
+    <div class="diff-slots" id="diff-slots">
+      <!-- populated by JS -->
+    </div>
+    <div class="diff-run-row">
+      <button class="diff-compare-btn" id="diff-compare-btn" onclick="runDiff()" disabled>⊜ COMPARE</button>
+    </div>
+  </div>
+
+  <!-- CENTER — diff viewer -->
+  <div class="diff-center">
+    <div class="diff-tabs-row" id="diff-result-tabs">
+      <div class="diff-result-tab only-a active" id="difftab-onlya" onclick="showDiffTab('onlya')">
+        ONLY IN A <span class="diff-tab-badge" id="diff-badge-a">0</span>
+      </div>
+      <div class="diff-result-tab only-b" id="difftab-onlyb" onclick="showDiffTab('onlyb')">
+        ONLY IN B <span class="diff-tab-badge" id="diff-badge-b">0</span>
+      </div>
+      <div class="diff-result-tab common" id="difftab-common" onclick="showDiffTab('common')">
+        COMMON <span class="diff-tab-badge" id="diff-badge-common">0</span>
+      </div>
+    </div>
+    <div class="diff-progress" id="diff-progress">
+      <div class="diff-progress-label"><span id="diff-prog-msg">Comparing…</span><span id="diff-prog-pct">0%</span></div>
+      <div class="diff-progress-bar"><div class="diff-progress-fill" id="diff-prog-fill"></div></div>
+    </div>
+    <div class="diff-search-row">
+      <input class="diff-search" id="diff-search" type="text" placeholder="Filter entries…" oninput="filterDiffList()">
+      <button class="diff-sort-btn" onclick="cycleDiffSort()">SORT: <span id="diff-sort-label">A→Z</span></button>
+      <button class="diff-sort-btn" onclick="toggleDiffSelectAll()" id="diff-selall-btn">SELECT ALL</button>
+    </div>
+    <div class="diff-list" id="diff-list">
+      <div class="diff-empty"><span class="big">⊜</span><span>Load two or more DAT files<br>and click COMPARE</span></div>
+    </div>
+  </div>
+
+  <!-- RIGHT — export panel -->
+  <div class="diff-right">
+    <div class="diff-section-title" style="flex-shrink:0;padding:10px 14px;border-bottom:1px solid var(--border);font-family:'Orbitron',monospace;font-size:9px;letter-spacing:3px;color:var(--text-dim);">EXPORT</div>
+    <div class="diff-export-summary" id="diff-export-summary">
+      <div class="diff-stat-row"><span class="diff-stat-label">ONLY IN A</span><span class="diff-stat-val green" id="diff-stat-a">—</span></div>
+      <div class="diff-stat-row"><span class="diff-stat-label">ONLY IN B</span><span class="diff-stat-val amber" id="diff-stat-b">—</span></div>
+      <div class="diff-stat-row"><span class="diff-stat-label">COMMON</span><span class="diff-stat-val dim" id="diff-stat-common">—</span></div>
+      <div class="diff-stat-row" style="margin-top:4px;padding-top:6px;border-top:1px solid var(--border)">
+        <span class="diff-stat-label">SELECTED</span><span class="diff-stat-val green" id="diff-stat-sel">—</span>
+      </div>
+    </div>
+    <div class="diff-export-opts" id="diff-export-opts">
+      <div class="diff-export-group">
+        <div class="diff-export-group-title">WHAT TO EXPORT</div>
+        <label class="diff-export-option">
+          <input type="checkbox" class="diff-export-cb" id="exp-onlya" checked>
+          <div class="diff-export-opt-info">
+            <div class="diff-export-opt-label" id="exp-label-a">Entries only in Reference</div>
+            <div class="diff-export-opt-desc" id="exp-desc-a">Present in Reference but missing from Compare</div>
+          </div>
+          <span class="diff-export-count" id="exp-count-a">0</span>
+        </label>
+        <label class="diff-export-option">
+          <input type="checkbox" class="diff-export-cb" id="exp-onlyb" checked>
+          <div class="diff-export-opt-info">
+            <div class="diff-export-opt-label" id="exp-label-b">Entries only in Compare</div>
+            <div class="diff-export-opt-desc" id="exp-desc-b">Present in Compare but missing from Reference</div>
+          </div>
+          <span class="diff-export-count" id="exp-count-b">0</span>
+        </label>
+        <label class="diff-export-option">
+          <input type="checkbox" class="diff-export-cb" id="exp-common">
+          <div class="diff-export-opt-info">
+            <div class="diff-export-opt-label">Common entries</div>
+            <div class="diff-export-opt-desc">Present in both A and B</div>
+          </div>
+          <span class="diff-export-count" id="exp-count-common">0</span>
+        </label>
+      </div>
+      <div class="diff-export-group">
+        <div class="diff-export-group-title">OUTPUT MODE</div>
+        <label class="diff-export-option">
+          <input type="radio" name="diff-out-mode" class="diff-export-cb" value="separate" checked>
+          <div class="diff-export-opt-info">
+            <div class="diff-export-opt-label">Separate files</div>
+            <div class="diff-export-opt-desc">One DAT per selected category</div>
+          </div>
+        </label>
+        <label class="diff-export-option">
+          <input type="radio" name="diff-out-mode" class="diff-export-cb" value="merged">
+          <div class="diff-export-opt-info">
+            <div class="diff-export-opt-label">Merged into one</div>
+            <div class="diff-export-opt-desc">All selected categories in one DAT</div>
+          </div>
+        </label>
+      </div>
+      <div class="diff-export-group">
+        <div class="diff-export-group-title">SELECTION SCOPE</div>
+        <label class="diff-export-option">
+          <input type="radio" name="diff-scope" class="diff-export-cb" value="all" checked>
+          <div class="diff-export-opt-info">
+            <div class="diff-export-opt-label">All entries</div>
+            <div class="diff-export-opt-desc">Export every entry in selected categories</div>
+          </div>
+        </label>
+        <label class="diff-export-option">
+          <input type="radio" name="diff-scope" class="diff-export-cb" value="checked">
+          <div class="diff-export-opt-info">
+            <div class="diff-export-opt-label">Checked entries only</div>
+            <div class="diff-export-opt-desc">Only entries checked in the viewer</div>
+          </div>
+        </label>
+      </div>
+    </div>
+    <div class="diff-output-row">
+      <span class="diff-output-label">OUTPUT</span>
+      <span class="diff-output-path" id="diff-output-path" onclick="selectDiffOutputFolder()">click to choose…</span>
+      <button class="btn-choose-folder" onclick="selectDiffOutputFolder()">📁</button>
+    </div>
+    <button class="diff-save-btn" id="diff-save-btn" onclick="saveDiffOutput()" disabled>▶ EXPORT DAT</button>
+    <div class="diff-summary" id="diff-summary"></div>
+  </div>
+</div>
+
+<!-- MODULE DOCS -->
+<div class="screen docs-screen" id="screen-docs">
+  <div class="breadcrumb"><span class="bc-home" onclick="goHome()">⌂ HOME</span><span class="bc-sep">›</span><span>DOCUMENTATION</span></div>
+  <div style="display:flex;flex:1;min-height:0;">
+    <div class="docs-sidebar">
+      <div class="docs-nav-item active" onclick="showDoc('overview')"><span class="docs-nav-icon">◈</span><span class="docs-nav-label">Overview</span></div>
+      <div class="docs-nav-item" onclick="showDoc('merger')"><span class="docs-nav-icon">⊞</span><span class="docs-nav-label">DAT Merger</span><span class="docs-nav-badge ready">READY</span></div>
+      <div class="docs-nav-item" onclick="showDoc('explorer')"><span class="docs-nav-icon">◉</span><span class="docs-nav-label">DAT Explorer</span><span class="docs-nav-badge ready">READY</span></div>
+      <div class="docs-nav-item" onclick="showDoc('splitter')"><span class="docs-nav-icon">◫</span><span class="docs-nav-label">DAT Splitter</span><span class="docs-nav-badge ready">READY</span></div>
+      <div class="docs-nav-item" onclick="showDoc('checksum')"><span class="docs-nav-icon">⊟</span><span class="docs-nav-label">Checksum Calc</span><span class="docs-nav-badge ready">READY</span></div>
+      <div class="docs-nav-item" onclick="showDoc('diff')"><span class="docs-nav-icon">⊜</span><span class="docs-nav-label">DAT Diff</span><span class="docs-nav-badge beta">BETA</span></div>
+      <div class="docs-nav-item" onclick="showDoc('formats')"><span class="docs-nav-icon">◫</span><span class="docs-nav-label">DAT Formats</span></div>
+      <div class="docs-nav-item" onclick="showDoc('changelog')"><span class="docs-nav-icon">⊡</span><span class="docs-nav-label">Changelog</span></div>
+    </div>
+    <div class="docs-content">
+      <div class="docs-section active" id="doc-overview">
+        <div class="docs-h1">DAT<span>//</span>ROMMANAGER</div>
+        <div class="docs-version">v0.9.0-beta · Universal DAT Management Toolkit</div>
+        <div class="docs-p"><strong>DAT//ROMMANAGER</strong> is an all-in-one toolkit for managing DAT files used in ROM preservation workflows. Designed to work alongside <em>RomVault</em>, <em>ClrMamePro</em> and <em>RomCenter</em>.</div>
+        <div class="docs-divider"></div>
+        <div class="docs-h2">WHAT ARE DAT FILES?</div>
+        <div class="docs-p">A DAT file is a database describing a set of ROMs — their names, sizes and checksums (CRC32, MD5, SHA1). ROM managers use DAT files to verify your collection and identify missing or corrupt files.</div>
+        <div class="docs-h2">MODULES</div>
+        <ul class="docs-ul">
+          <li><strong>01 — DAT Merger</strong>  Combine hundreds of DAT files into one file for RomVault.</li>
+          <li><strong>02 — DAT Explorer</strong>  Inspect any DAT: browse entries, view ROM checksums, see platform info.</li>
+          <li><strong>03 — DAT Splitter</strong>  Split a DAT into multiple files by region, language, year, alphabet, type and more.</li>
+          <li><strong>06 — Checksum Calc</strong>  Compute CRC32, MD5, SHA1, SHA256 for any file and verify against known hashes.</li>
+          <li><strong>04 — DAT Diff</strong>  Compare two or more DAT files by checksum — find exclusive and common entries, then export exactly what you need.</li>
+        </ul>
+        <div class="docs-tip">This is a beta release. Modules 04–06 are in development. Check the Changelog after each update.</div>
+        <div class="docs-h2">COMPATIBILITY</div>
+        <ul class="docs-ul"><li>Windows 10 / 11 (x64)</li><li>macOS 12+ (Intel &amp; Apple Silicon)</li><li>Linux (AppImage)</li></ul>
+      </div>
+      <div class="docs-section" id="doc-merger">
+        <div class="docs-h1">MODULE 01 <span>//</span> DAT MERGER</div>
+        <div class="docs-version">Status: READY · Stable</div>
+        <div class="docs-p">Combines multiple DAT files from a folder (and all subfolders) into a single output DAT. Supports both <em>XML Logiqx</em> and <em>ClrMamePro</em> formats.</div>
+        <div class="docs-divider"></div>
+        <div class="docs-h2">HOW TO USE</div>
+        <ul class="docs-ul">
+          <li>Click the drop area or drag a folder onto it</li>
+          <li>The app scans recursively for all <em>.dat</em> and <em>.xml</em> files</li>
+          <li>Configure output settings on the right panel, then click <strong>▶ MERGE ALL</strong></li>
+          <li>A summary dialog shows full statistics after merge completes</li>
+        </ul>
+        <div class="docs-h2">CONFIG OPTIONS</div>
+        <ul class="docs-ul">
+          <li><strong>Output filename</strong>  Name of the generated .dat file</li>
+          <li><strong>Version / Author</strong>  Written into the output DAT header</li>
+          <li><strong>Keep duplicates</strong>  When OFF, identical entry names are deduplicated</li>
+          <li><strong>Source prefix</strong>  Prepends source DAT filename to each entry name</li>
+        </ul>
+        <div class="docs-warn">Very large merges (10,000+ entries) may take several seconds. The progress overlay shows real-time status.</div>
+      </div>
+      <div class="docs-section" id="doc-explorer">
+        <div class="docs-h1">MODULE 02 <span>//</span> DAT EXPLORER</div>
+        <div class="docs-version">Status: READY · Stable</div>
+        <div class="docs-p">Load and inspect any single DAT file. Browse all entries, view ROM checksums and see system information for the platform the DAT covers.</div>
+        <div class="docs-divider"></div>
+        <div class="docs-h2">LAYOUT</div>
+        <ul class="docs-ul">
+          <li><strong>Left panel</strong>  Drop zone + DAT header info and statistics</li>
+          <li><strong>Center top</strong>  Scrollable sortable list of game entries</li>
+          <li><strong>Center bottom</strong>  ROM files for the selected entry — full names and all checksums. Drag the splitter bar to resize.</li>
+          <li><strong>Right panel</strong>  System Info: platform description, manufacturer, release year</li>
+        </ul>
+        <div class="docs-h2">NAVIGATION</div>
+        <ul class="docs-ul">
+          <li>Click any entry to view its ROM files</li>
+          <li>Use <em>↑ ↓ arrow keys</em> to navigate with keyboard</li>
+          <li>Type in the search box to filter entries in real time</li>
+          <li>Sort buttons: <em>A→Z</em>, <em>Z→A</em>, <em>ROMs↓</em> (most ROMs first), <em>ROMs↑</em> (fewest first)</li>
+        </ul>
+        <div class="docs-warn">System Info describes the <strong>platform of the entire DAT</strong>, not the selected entry. It updates only when a new DAT is loaded.</div>
+      </div>
+      <div class="docs-section" id="doc-checksum">
+        <div class="docs-h1">MODULE 06 <span>//</span> CHECKSUM CALCULATOR</div>
+        <div class="docs-version">Status: READY · Stable</div>
+        <div class="docs-p">Computes cryptographic and integrity hashes for any file. Supports <em>CRC32</em>, <em>MD5</em>, <em>SHA1</em> and <em>SHA256</em>.</div>
+        <div class="docs-divider"></div>
+        <div class="docs-h2">HOW TO USE</div>
+        <ul class="docs-ul">
+          <li>Drop files onto the zone or click to open the file picker</li>
+          <li>Multiple files can be processed at once</li>
+          <li>Dropping new files <strong>clears previous results automatically</strong></li>
+          <li>Toggle algorithms on/off before processing</li>
+          <li>Click <em>COPY</em> next to any hash to copy to clipboard</li>
+        </ul>
+        <div class="docs-h2">VERIFY FIELD</div>
+        <div class="docs-p">Each result card has a <strong>VERIFY</strong> input at the bottom. Paste any expected hash (from a DAT file, a website, etc.) and the app instantly tells you if it matches any computed hash, regardless of algorithm.</div>
+        <div class="docs-h2">ALGORITHMS</div>
+        <ul class="docs-ul">
+          <li><strong>CRC32</strong>  Fast 32-bit checksum. Standard in ROM DAT files.</li>
+          <li><strong>MD5</strong>  128-bit hash. Common in older DAT formats.</li>
+          <li><strong>SHA1</strong>  160-bit hash. Standard in No-Intro and Redump DATs.</li>
+          <li><strong>SHA256</strong>  256-bit hash. Modern high-security standard.</li>
+        </ul>
+        <div class="docs-tip">CRC32 is the most widely used checksum in ROM preservation. For basic verification against a DAT file, CRC32 alone is usually sufficient.</div>
+      </div>
+      <div class="docs-section" id="doc-splitter">
+        <div class="docs-h1">MODULE 03 <span>//</span> DAT SPLITTER</div>
+        <div class="docs-version">Status: READY · Stable</div>
+        <div class="docs-p">The DAT Splitter divides a single DAT file into multiple output files according to a chosen criterion. Each output is a valid XML Logiqx DAT with its own header, ready for RomVault, ClrMamePro or RomCenter.</div>
+        <div class="docs-divider"></div>
+        <div class="docs-h2">HOW TO USE</div>
+        <ul class="docs-ul">
+          <li>Drop a DAT file onto the left panel, or click to browse</li>
+          <li>Or click <strong>USE DAT FROM EXPLORER</strong> to reuse a DAT already loaded in Module 02 — no re-parsing needed</li>
+          <li>Choose a split mode from the center panel</li>
+          <li>Review the preview list — each group shows label, filename and entry count</li>
+          <li>Uncheck any groups you don't want to save, then click <strong>▶ SPLIT &amp; SAVE</strong></li>
+        </ul>
+        <div class="docs-h2">SPLIT MODES</div>
+        <ul class="docs-ul">
+          <li><strong>Region</strong>  Detects <em>(USA)</em>, <em>(Europe)</em>, <em>(Japan)</em>, <em>(World)</em> etc. in entry names. Also reads the rom.region attribute. No tag → <em>Unknown / No Region Tag</em>.</li>
+          <li><strong>Language</strong>  Detects language codes: <em>(En)</em>, <em>(It)</em>, <em>(Fr)</em>, <em>(De)</em>, <em>(Ja)</em> etc. Multi-language entries like <em>(En,Fr,De)</em> are grouped together.</li>
+          <li><strong>Year</strong>  One file per release year. If year field is empty, extracts 4-digit year from entry name.</li>
+          <li><strong>Decade</strong>  Groups by decade: 1980s, 1990s, 2000s, 2010s…</li>
+          <li><strong>Alphabetical</strong>  Five buckets: A-E · F-J · K-O · P-T · U-Z · # (non-letter).</li>
+          <li><strong>Manufacturer</strong>  Splits by the manufacturer/developer field in the DAT.</li>
+          <li><strong>Category</strong>  Splits by category field. Useful for MAME and TOSEC DATs with category metadata.</li>
+          <li><strong>Type</strong>  Three groups: <em>BIOS / System</em> (isbios="yes" or [BIOS] tag) · <em>Clones</em> (entries with cloneof/romof) · <em>Parents / Originals</em>.</li>
+          <li><strong>Release Status</strong>  Detects tags: Beta · Proto · Demo · Sample · Unlicensed · Hack · Bootleg · Pirate · Released.</li>
+          <li><strong>ROM Count</strong>  Groups by number of ROM files per entry: 1 · 2-5 · 6-20 · 21-100 · 100+.</li>
+        </ul>
+        <div class="docs-h2">OUTPUT FILES</div>
+        <div class="docs-p">Each output file is a valid <em>XML Logiqx</em> DAT with updated header. Filename is auto-generated as <em>OriginalName - GroupLabel.dat</em>. Invalid filename characters are replaced with underscores.</div>
+        <div class="docs-tip">Use <strong>USE DAT FROM EXPLORER</strong> when working with large DATs (80MB+) — avoids parsing the file twice.</div>
+        <div class="docs-warn">Region and Language detection follows No-Intro, Redump and TOSEC naming conventions. DATs with non-standard naming may produce unexpected groups — always review the preview before saving.</div>
+      </div>
+      <div class="docs-section" id="doc-diff">
+        <div class="docs-h1">MODULE 04 <span>//</span> DAT DIFF</div>
+        <div class="docs-version">Status: BETA · In active development</div>
+        <div class="docs-p">The DAT Diff module compares two or more DAT files and identifies which entries are unique to each file, and which are shared. Comparison is based on <em>CRC32</em> and <em>SHA1</em> checksums — not on entry names, which may differ between sources.</div>
+        <div class="docs-divider"></div>
+        <div class="docs-h2">COMPARISON MODES</div>
+        <ul class="docs-ul">
+          <li><strong>A vs B</strong>  Direct comparison between two DAT files. Shows what is exclusive to A, exclusive to B, and what they have in common.</li>
+          <li><strong>Master + N</strong>  Compare a master DAT against one or more secondary DATs. Useful for checking what a HBMAME or extended set adds over a standard MAME DAT, for example.</li>
+        </ul>
+        <div class="docs-h2">HOW TO USE</div>
+        <ul class="docs-ul">
+          <li>Choose a comparison mode from the tabs at the top of the left panel</li>
+          <li>Drop a DAT file into each slot, or click to browse</li>
+          <li>In Master + N mode, additional secondary slots appear automatically as you load files</li>
+          <li>Click <strong>⊜ COMPARE</strong> to run the analysis</li>
+          <li>Browse results using the three tabs: <em>Only in A</em>, <em>Only in B</em>, <em>Common</em></li>
+          <li>Use the search box and sort button to navigate large result sets</li>
+          <li>Use the checkboxes to select specific entries you want to export</li>
+        </ul>
+        <div class="docs-h2">EXPORT OPTIONS</div>
+        <ul class="docs-ul">
+          <li><strong>What to export</strong>  Choose any combination of the three categories (Only A, Only B, Common)</li>
+          <li><strong>Separate files</strong>  One output DAT per selected category</li>
+          <li><strong>Merged into one</strong>  All selected categories combined into a single DAT</li>
+          <li><strong>All entries</strong>  Export every entry in the selected categories</li>
+          <li><strong>Checked entries only</strong>  Export only the entries individually checked in the viewer</li>
+        </ul>
+        <div class="docs-h2">COMPARISON METHOD</div>
+        <div class="docs-p">Two entries are considered identical if their ROM file set produces the same fingerprint — a sorted combination of CRC32 and SHA1 values. This correctly handles cases where entry names differ between sources (e.g. TOSEC vs No-Intro naming conventions).</div>
+        <div class="docs-tip">Typical use case: load a standard MAME DAT as Master and HBMAME as Secondary. "Only in Secondary" will give you exactly the homebrew-exclusive entries.</div>
+        <div class="docs-warn">Entries with no ROM files (header-only entries) have an empty fingerprint and will always be grouped together as "common" or may produce unexpected results. Review before exporting.</div>
+      </div>
+      <div class="docs-section" id="doc-formats">
+        <div class="docs-h1">DAT <span>//</span> FILE FORMATS</div>
+        <div class="docs-version">Reference guide for supported formats</div>
+        <div class="docs-divider"></div>
+        <div class="docs-h2">XML LOGIQX</div>
+        <div class="docs-p">Standard format used by No-Intro, Redump and modern TOSEC releases.</div>
+        <code class="docs-code">&lt;datafile&gt;
+  &lt;header&gt;
+    &lt;name&gt;Nintendo - Game Boy Advance&lt;/name&gt;
+  &lt;/header&gt;
+  &lt;game name="Game Title (USA)"&gt;
+    &lt;rom name="Game Title (USA).gba" size="4194304"
+         crc="AABBCCDD" md5="..." sha1="..."/&gt;
+  &lt;/game&gt;
+&lt;/datafile&gt;</code>
+        <div class="docs-h2">CLRMAMEPRO FORMAT</div>
+        <div class="docs-p">Older text-based format used by ClrMamePro and some MAME tools.</div>
+        <code class="docs-code">clrmamepro (
+  name "My Collection"
+  version "1.0"
+)
+game (
+  name "Game Title"
+  rom ( name "Game Title.gba" size 4194304 crc AABBCCDD )
+)</code>
+        <div class="docs-warn">ClrMamePro DATs are auto-converted to XML Logiqx during merge. Original files are never modified.</div>
+        <div class="docs-h2">KNOWN DAT SOURCES</div>
+        <ul class="docs-ul">
+          <li><em>No-Intro</em>  Cartridge-based systems — format: <strong>Manufacturer - System</strong></li>
+          <li><em>Redump</em>  Disc-based systems — format: <strong>Manufacturer - System</strong></li>
+          <li><em>TOSEC</em>  Broad coverage — format: <strong>System - Category (Region)</strong></li>
+          <li><em>MAME / HBMAME</em>  Arcade machines and homebrews</li>
+        </ul>
+      </div>
+      <div class="docs-section" id="doc-changelog">
+        <div class="docs-h1">CHANGE<span>LOG</span></div>
+        <div class="docs-version">Version history &amp; release notes</div>
+        <div class="docs-divider"></div>
+        <div class="docs-changelog">
+          <div class="docs-cl-entry">
+            <div class="docs-cl-ver">v0.9.0-beta</div>
+            <div class="docs-cl-date">March 2026 · First public beta release</div>
+            <ul class="docs-cl-items">
+              <li>Module 01 — DAT Merger: stable, full XML Logiqx + ClrMamePro support</li>
+              <li>Module 02 — DAT Explorer (READY): new 3-column layout with resizable splitter</li>
+              <li>Module 02 — DAT Explorer: keyboard navigation with ↑↓ arrow keys</li>
+              <li>Module 02 — DAT Explorer: sort by name and ROM count</li>
+              <li>Module 02 — DAT Explorer: System Info panel with 60+ systems database</li>
+              <li>Module 02 — DAT Explorer: fuzzy matching for TOSEC / No-Intro / Redump names</li>
+              <li>Module 03 — DAT Splitter (READY): 10 split modes (region, language, year, decade, alphabetical, manufacturer, category, type, status, ROM count)</li>
+              <li>Module 03 — DAT Splitter: multi-mode combined split (e.g. Region + Language + Year)</li>
+              <li>Module 03 — DAT Splitter: interactive preview with per-group enable/disable checkboxes</li>
+              <li>Module 03 — DAT Splitter: "Use DAT from Explorer" to avoid re-parsing large files</li>
+              <li>Module 03 — DAT Splitter: progress bar during parsing and saving</li>
+              <li>Module 06 — Checksum Calculator (READY): CRC32, MD5, SHA1, SHA256</li>
+              <li>Module 06 — Checksum Calculator: verify field, auto-clear on new file drop</li>
+              <li>App: update notifier with What's New dialog (checks GitHub at startup)</li>
+              <li>App: dynamic module grid (auto-expands as new modules are added)</li>
+              <li>App: built-in documentation viewer</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PROGRESS -->
+<div class="progress-overlay" id="progress-overlay">
+  <div class="progress-box">
+    <div class="prog-title">PROCESSING</div>
+    <div class="prog-current-file" id="prog-current">Initializing...</div>
+    <div class="prog-bar-wrap"><div class="prog-bar-fill" id="prog-fill"></div></div>
+    <div class="prog-stats-row"><span id="prog-label">Please wait...</span><span class="prog-pct" id="prog-pct">0%</span></div>
+    <div class="prog-log" id="prog-log"></div>
+  </div>
+</div>
+
+<!-- SUMMARY -->
+<div class="summary-overlay" id="summary-overlay">
+  <div class="summary-box">
+    <div class="summary-header"><div class="summary-title">✓ MERGE COMPLETE</div></div>
+    <div class="summary-body">
+      <span class="summary-check">✓</span>
+      <div class="summary-row"><span class="summary-key">Output file</span><span class="summary-val" id="sum-file">—</span></div>
+      <div class="summary-row"><span class="summary-key">Total entries</span><span class="summary-val green" id="sum-entries">—</span></div>
+      <div class="summary-row"><span class="summary-key">File size</span><span class="summary-val amber" id="sum-size">—</span></div>
+      <div class="summary-row"><span class="summary-key">Source files</span><span class="summary-val" id="sum-sources">—</span></div>
+      <div class="summary-row" id="sum-dupes-row" style="display:none"><span class="summary-key">Duplicates removed</span><span class="summary-val" id="sum-dupes">—</span></div>
+      <div class="summary-row" id="sum-errors-row" style="display:none"><span class="summary-key">Errors</span><span class="summary-val" style="color:var(--red)" id="sum-errors">—</span></div>
+    </div>
+    <div class="summary-footer"><button class="btn-ok" onclick="closeSummary()">OK</button></div>
+  </div>
+</div>
+
+<!-- WHATS NEW -->
+<div class="whatsnew-overlay" id="whatsnew-overlay" onclick="closeWhatsNewOutside(event)">
+  <div class="whatsnew-box">
+    <div class="whatsnew-header">
+      <div class="whatsnew-title">WHAT'S NEW</div>
+      <div class="whatsnew-version" id="whatsnew-version">—</div>
+      <button class="whatsnew-close" onclick="closeWhatsNew()">✕</button>
+    </div>
+    <div class="whatsnew-body">
+      <div class="whatsnew-notes" id="whatsnew-notes">Loading...</div>
+    </div>
+    <div class="whatsnew-footer">
+      <button class="btn-later" onclick="closeWhatsNew()">Later</button>
+      <button class="btn-goto-gh" onclick="gotoGithubRelease()">↗ Go to GitHub</button>
+    </div>
+  </div>
+</div>
+
+<!-- CREDITS -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeCreditsOutside(event)">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title">ABOUT // CREDITS</div><button class="modal-close" onclick="closeCredits()">✕</button></div>
+    <div class="modal-body">
+      <div class="credits-logo">DAT<span>//</span>ROMMANAGER</div>
+      <div class="credits-tagline">UNIVERSAL DAT MANAGEMENT TOOLKIT · v0.9.0-beta</div>
+      <div class="credits-divider"></div>
+      <div class="credits-section-label">AUTHORS</div>
+      <div class="credits-row"><span class="credits-key">Andrea Luca Bozzalla</span><span class="credits-val green">aka Andrea71 · Andrea7103</span></div>
+      <div class="credits-row"><span class="credits-key">Claude (Anthropic AI)</span><span class="credits-val green">design &amp; development</span></div>
+      <div class="credits-divider"></div>
+      <div class="credits-section-label">SPECIAL THANKS</div>
+      <div class="credits-thanks">
+        <div class="thanks-block"><span class="thanks-name">Simone73</span><span class="thanks-role">for the original DAT Workshop, source of inspiration</span></div>
+        <div class="thanks-group"><span class="thanks-label">Mamechannel.it crew</span><span class="thanks-members">Ricky74 · Vankraus · Napalm · Walter68 · Fava</span></div>
+      </div>
+      <div class="credits-divider"></div>
+      <div class="credits-section-label">BUILT WITH</div>
+      <div class="credits-row"><span class="credits-key">Runtime</span><span class="credits-val amber">Electron · Node.js</span></div>
+      <div class="credits-row"><span class="credits-key">Formats</span><span class="credits-val">Logiqx XML · ClrMamePro DAT</span></div>
+      <div class="credits-row"><span class="credits-key">Compatible with</span><span class="credits-val">RomVault · ClrMamePro · RomCenter</span></div>
+      <div class="credits-row"><span class="credits-key">Platform</span><span class="credits-val">Windows · macOS · Linux</span></div>
+      <div class="credits-divider"></div>
+      <a class="credits-github" id="github-link" href="#">
+        <div class="credits-github-icon">⌥</div>
+        <div><div class="gh-label">Source code &amp; releases</div><div class="gh-url">github.com/Andrea7103/dat-rommanager</div></div>
+      </a>
+      <div class="credits-note">Preserving gaming history, one checksum at a time.</div>
+    </div>
+  </div>
+</div>
+
+<script src="renderer.js"></script>
+<script src="explorer.js"></script>
+<script src="checksum.js"></script>
+<script src="splitter.js"></script>
+<script src="diff.js"></script>
+<script>
+const APP_VERSION = '0.9.0-beta';
+let updateReleaseUrl = '';
+
+// ── MODULE REGISTRY — aggiungi qui nuovi moduli ──
+const MODULES = [
+  { num:'01', icon:'⊞', name:'DAT MERGER',    desc:'Merge hundreds of DAT files into a single file for RomVault',    badge:'ready', screen:'merger',   label:'MODULE 01 // DAT MERGER' },
+  { num:'02', icon:'◉', name:'DAT EXPLORER',  desc:'Inspect a DAT file — browse entries and view ROM details',        badge:'ready', screen:'explorer', label:'MODULE 02 // DAT EXPLORER' },
+  { num:'03', icon:'◫', name:'DAT SPLITTER',  desc:'Split a DAT file by region, language, year, alphabet and more',  badge:'ready', screen:'splitter', label:'MODULE 03 // DAT SPLITTER' },
+  { num:'04', icon:'⊜', name:'DAT DIFF',       desc:'Compare two DAT files — find entries unique to each one',        badge:'beta',  screen:'diff',     label:'MODULE 04 // DAT DIFF' },
+  { num:'05', icon:'◌', name:'COMING SOON',   desc:'Next function in development',                                    badge:'soon',  screen:null },
+  { num:'06', icon:'⊟', name:'CHECKSUM CALC', desc:'Compute CRC32 / MD5 / SHA1 / SHA256 for any file',               badge:'ready', screen:'checksum', label:'MODULE 06 // CHECKSUM CALCULATOR' },
+];
+
+const PAGE_SIZE = 6;
+let currentPage = 0;
+
+function renderModuleGrid() {
+  const grid = document.getElementById('module-grid');
+  const totalPages = Math.ceil(MODULES.length / PAGE_SIZE);
+  const start = currentPage * PAGE_SIZE;
+  const slice = MODULES.slice(start, start + PAGE_SIZE);
+
+  grid.innerHTML = slice.map(m => {
+    const active = m.screen ? 'active-module' : 'locked';
+    const click  = m.screen ? `onclick="goTo('${m.screen}','${m.label}')"` : '';
+    return `<div class="module-btn ${active}" ${click}>
+      <span class="module-badge ${m.badge}">${m.badge.toUpperCase()}</span>
+      <div class="module-num">${m.num} //</div>
+      <div class="module-icon">${m.icon}</div>
+      <div class="module-name">${m.name}</div>
+      <div class="module-desc">${m.desc}</div>
+    </div>`;
+  }).join('');
+
+  const pag = document.getElementById('module-pagination');
+  if (totalPages > 1) {
+    pag.style.display = 'flex';
+    document.getElementById('btn-prev').disabled = currentPage === 0;
+    document.getElementById('btn-next').disabled = currentPage >= totalPages - 1;
+    document.getElementById('page-indicator').textContent = `PAGE ${currentPage+1} / ${totalPages}`;
+  } else {
+    pag.style.display = 'none';
+  }
+}
+
+function changePage(dir) {
+  const totalPages = Math.ceil(MODULES.length / PAGE_SIZE);
+  currentPage = Math.max(0, Math.min(totalPages - 1, currentPage + dir));
+  renderModuleGrid();
+}
+
+// Render grid on startup
+renderModuleGrid();
+
+function goHome() {
+  ['merger','explorer','checksum','splitter','diff','docs'].forEach(id => document.getElementById('screen-'+id).classList.remove('active'));
+  document.getElementById('screen-home').classList.add('active');
+  document.getElementById('btn-home').style.display = 'none';
+  document.getElementById('header-tagline').textContent = 'UNIVERSAL DAT MANAGEMENT TOOLKIT · v0.9.0-beta';
+  setStatus('READY');
+}
+function goTo(id, label) {
+  document.getElementById('screen-home').classList.remove('active');
+  ['merger','explorer','checksum','splitter','diff','docs'].forEach(i => document.getElementById('screen-'+i).classList.remove('active'));
+  document.getElementById('screen-'+id).classList.add('active');
+  document.getElementById('btn-home').style.display = '';
+  document.getElementById('header-tagline').textContent = label;
+}
+function showDoc(section) {
+  document.querySelectorAll('.docs-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.docs-nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('doc-'+section).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+function openCredits()          { document.getElementById('modal-overlay').classList.add('open'); }
+function closeCredits()         { document.getElementById('modal-overlay').classList.remove('open'); }
+function closeCreditsOutside(e) { if(e.target===document.getElementById('modal-overlay')) closeCredits(); }
+
+document.getElementById('github-link').addEventListener('click', e => {
+  e.preventDefault();
+  if(window.electronAPI?.openExternal) window.electronAPI.openExternal('https://github.com/Andrea7103/dat-rommanager');
+});
+
+// ── UPDATE CHECK ──
+async function checkForUpdates() {
+  try {
+    const data = await window.electronAPI.checkUpdates();
+    if (!data || !data.tag_name) return;
+    const latest = data.tag_name.replace(/^v/,'');
+    if (latest === APP_VERSION) return;
+    // Simple semver-like comparison — show banner if latest != current
+    document.getElementById('update-version').textContent = data.tag_name;
+    document.getElementById('update-banner').classList.add('visible');
+    updateReleaseUrl = data.html_url || 'https://github.com/Andrea7103/dat-rommanager/releases';
+    // Store release notes
+    document.getElementById('whatsnew-version').textContent = data.tag_name;
+    document.getElementById('whatsnew-notes').textContent = data.body || 'No release notes available.';
+  } catch(e) {}
+}
+
+function dismissUpdate()  { document.getElementById('update-banner').classList.remove('visible'); }
+function openWhatsNew()   { document.getElementById('whatsnew-overlay').classList.add('open'); }
+function closeWhatsNew()  { document.getElementById('whatsnew-overlay').classList.remove('open'); }
+function closeWhatsNewOutside(e) { if(e.target===document.getElementById('whatsnew-overlay')) closeWhatsNew(); }
+function gotoGithubRelease() {
+  if(window.electronAPI?.openExternal) window.electronAPI.openExternal(updateReleaseUrl || 'https://github.com/Andrea7103/dat-rommanager/releases');
+  closeWhatsNew();
+}
+
+// Check updates 2 seconds after startup
+setTimeout(checkForUpdates, 2000);
+
+// Init all modules
+initDiff();
+</script>
+</body>
+</html>
