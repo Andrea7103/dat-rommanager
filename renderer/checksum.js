@@ -1,0 +1,273 @@
+// ============================================================
+// CHECKSUM CALCULATOR — Module 03
+// ============================================================
+let activeAlgos = { crc32:true, md5:true, sha1:true, sha256:true };
+
+function toggleAlgo(algo) {
+  activeAlgos[algo] = !activeAlgos[algo];
+  document.getElementById('algo-'+algo).classList.toggle('active', activeAlgos[algo]);
+}
+
+function clearChecksums() {
+  document.getElementById('chk-results').innerHTML =
+    '<div class="chk-empty"><span class="big">⊟</span><span>Drop files to compute checksums<br>CRC32 · MD5 · SHA1 · SHA256</span></div>';
+  document.getElementById('chk-export-dat-btn').disabled = true;
+}
+
+async function selectChecksumFiles() {
+  const filePaths = await window.electronAPI.selectAnyFiles();
+  if (!filePaths?.length) return;
+  clearChecksums();
+  for (const fp of filePaths) await processChecksumFilePath(fp);
+}
+
+// Drag & drop
+const chkDrop = document.getElementById('chk-drop');
+chkDrop.addEventListener('dragover', e => { e.preventDefault(); chkDrop.classList.add('dragover'); });
+chkDrop.addEventListener('dragleave', () => chkDrop.classList.remove('dragover'));
+chkDrop.addEventListener('drop', async e => {
+  e.preventDefault(); chkDrop.classList.remove('dragover');
+  clearChecksums();
+  for (const f of [...e.dataTransfer.files]) await processChecksumFileObject(f);
+});
+
+async function processChecksumFilePath(filePath) {
+  const name    = filePath.split(/[/\\]/).pop();
+  const cardId  = 'chk-' + Date.now() + '-' + Math.random().toString(36).slice(2,7);
+  addChecksumCard(cardId, name, '—');
+  try {
+    const arr = await window.electronAPI.readFileBuffer(filePath);
+    if (!arr) { updateCardError(cardId, 'Read error'); return; }
+    const u8 = new Uint8Array(arr);
+    updateCardSize(cardId, formatBytes(u8.byteLength));
+    await computeAndDisplay(cardId, u8);
+  } catch(e) { updateCardError(cardId, e.message); }
+}
+
+async function processChecksumFileObject(file) {
+  const cardId = 'chk-' + Date.now() + '-' + Math.random().toString(36).slice(2,7);
+  addChecksumCard(cardId, file.name, formatBytes(file.size));
+  try {
+    const u8 = new Uint8Array(await file.arrayBuffer());
+    await computeAndDisplay(cardId, u8);
+  } catch(e) { updateCardError(cardId, e.message); }
+}
+
+async function computeAndDisplay(cardId, u8) {
+  const tasks = [];
+  if (activeAlgos.crc32)  tasks.push({ key:'CRC32',  fn: () => Promise.resolve(computeCRC32(u8)) });
+  if (activeAlgos.md5)    tasks.push({ key:'MD5',    fn: () => Promise.resolve(computeMD5(u8)) });
+  if (activeAlgos.sha1)   tasks.push({ key:'SHA1',   fn: () => computeSubtle(u8,'SHA-1') });
+  if (activeAlgos.sha256) tasks.push({ key:'SHA256', fn: () => computeSubtle(u8,'SHA-256') });
+
+  for (const t of tasks) setHashRow(cardId, t.key, '...', true);
+
+  for (const t of tasks) {
+    let result;
+    try   { result = await t.fn(); }
+    catch { result = 'error'; }
+    setHashRow(cardId, t.key, result, false);
+  }
+}
+
+function addChecksumCard(cardId, name, size) {
+  const results = document.getElementById('chk-results');
+  const empty = results.querySelector('.chk-empty');
+  if (empty) empty.remove();
+
+  const algos = ['crc32','md5','sha1','sha256'].filter(k => activeAlgos[k]).map(k => k.toUpperCase());
+
+  const card = document.createElement('div');
+  card.className = 'chk-file-card';
+  card.id = cardId;
+  card.innerHTML = `
+    <div class="chk-file-header">
+      <span class="chk-file-icon">◈</span>
+      <span class="chk-file-name" title="${xHC(name)}">${xHC(name)}</span>
+      <span class="chk-file-size" id="${cardId}-size">${size}</span>
+    </div>
+    <div class="chk-hashes" id="${cardId}-hashes">
+      ${algos.map(k => `
+        <div class="chk-hash-row" id="${cardId}-row-${k}">
+          <span class="chk-hash-key">${k}</span>
+          <span class="chk-hash-val computing" id="${cardId}-val-${k}">waiting...</span>
+          <button class="chk-copy-btn" id="${cardId}-btn-${k}" onclick="copyHash('${cardId}','${k}')">COPY</button>
+        </div>`).join('')}
+    </div>
+    <div class="chk-verify-row">
+      <span class="chk-verify-label">VERIFY:</span>
+      <input class="chk-verify-input" type="text" placeholder="Paste expected hash to verify..." oninput="verifyHash('${cardId}',this.value)">
+      <span class="chk-verify-result" id="${cardId}-verify"></span>
+    </div>`;
+
+  results.appendChild(card);
+  card.scrollIntoView({ behavior:'smooth', block:'end' });
+  document.getElementById('chk-export-dat-btn').disabled = false;
+}
+
+async function exportChecksumAsDat() {
+  const cards = document.querySelectorAll('.chk-file-card');
+  if (!cards.length) return;
+
+  const outPath = await window.electronAPI.selectOutputFolder?.();
+  if (!outPath) return;
+
+  const date = new Date().toISOString().slice(0,10);
+  const lines = [
+    '<?xml version="1.0"?>',
+    '<datafile>',
+    '  <header>',
+    `    <n>Checksum Export</n>`,
+    `    <description>Generated by DAT//ROMMANAGER Checksum Calculator</description>`,
+    `    <date>${date}</date>`,
+    '    <author>DAT//ROMMANAGER</author>',
+    '  </header>',
+  ];
+
+  for (const card of cards) {
+    const name = card.querySelector('.chk-file-name')?.getAttribute('title') || 'unknown';
+    const size = card.querySelector('.chk-file-size')?.textContent || '';
+    const crc   = card.querySelector(`[id$="-val-CRC32"]`)?.textContent || '';
+    const md5   = card.querySelector(`[id$="-val-MD5"]`)?.textContent || '';
+    const sha1  = card.querySelector(`[id$="-val-SHA1"]`)?.textContent || '';
+    const sha256= card.querySelector(`[id$="-val-SHA256"]`)?.textContent || '';
+
+    const invalid = ['waiting...','error','...','computing'];
+    const attrs = [
+      `name="${xHC(name)}"`,
+      !invalid.includes(crc)    ? `crc="${crc.toLowerCase()}"`     : '',
+      !invalid.includes(md5)    ? `md5="${md5.toLowerCase()}"`     : '',
+      !invalid.includes(sha1)   ? `sha1="${sha1.toLowerCase()}"`   : '',
+      !invalid.includes(sha256) ? `sha256="${sha256.toLowerCase()}"` : '',
+    ].filter(Boolean).join(' ');
+
+    lines.push(`  <game name="${xHC(name)}">`,
+      `    <description>${xHC(name)}</description>`,
+      `    <rom ${attrs}/>`,
+      `  </game>`);
+  }
+  lines.push('</datafile>');
+
+  const filePath = outPath + '\\checksum-export-' + date + '.dat';
+  await window.electronAPI.saveSplit?.(filePath, lines.join('\n'));
+
+  const btn = document.getElementById('chk-export-dat-btn');
+  const orig = btn.textContent;
+  btn.textContent = '✓ SAVED';
+  setTimeout(() => btn.textContent = orig, 2000);
+}
+
+function updateCardSize(cardId, size) {
+  const el = document.getElementById(cardId+'-size');
+  if (el) el.textContent = size;
+}
+
+function updateCardError(cardId, msg) {
+  const hashes = document.getElementById(cardId+'-hashes');
+  if (hashes) hashes.innerHTML = `<div style="padding:8px;font-size:12px;color:var(--red)">✗ ${xHC(msg)}</div>`;
+}
+
+function setHashRow(cardId, key, value, computing) {
+  const val = document.getElementById(`${cardId}-val-${key}`);
+  if (!val) return;
+  val.textContent = value;
+  val.className = 'chk-hash-val'+(computing?' computing':'');
+}
+
+async function copyHash(cardId, key) {
+  const val = document.getElementById(`${cardId}-val-${key}`);
+  if (!val || val.classList.contains('computing')) return;
+  const text = val.textContent;
+  if (!text || text === 'waiting...' || text === 'error') return;
+  try {
+    await navigator.clipboard.writeText(text);
+    const btn = document.getElementById(`${cardId}-btn-${key}`);
+    if (btn) { btn.textContent='✓'; btn.classList.add('copied'); setTimeout(()=>{btn.textContent='COPY';btn.classList.remove('copied');},1500); }
+  } catch(e) {}
+}
+
+function verifyHash(cardId, inputVal) {
+  const result = document.getElementById(cardId+'-verify');
+  if (!result) return;
+  const v = inputVal.trim().toLowerCase();
+  if (!v) { result.textContent=''; return; }
+  const keys = ['CRC32','MD5','SHA1','SHA256'];
+  const hashes = keys.map(k => {
+    const el = document.getElementById(`${cardId}-val-${k}`);
+    return el ? el.textContent.toLowerCase() : '';
+  }).filter(h => h && h!=='waiting...' && h!=='error' && h!=='...');
+  const match = hashes.some(h => h === v);
+  result.textContent = match ? '✓ MATCH' : '✗ NO MATCH';
+  result.className = 'chk-verify-result '+(match?'match':'mismatch');
+}
+
+// ── CRC32 ──
+const CRC32_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let i=0;i<256;i++) {
+    let c=i;
+    for (let j=0;j<8;j++) c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1);
+    t[i]=c;
+  }
+  return t;
+})();
+
+function computeCRC32(arr) {
+  let crc = 0xFFFFFFFF;
+  for (let i=0;i<arr.length;i++) crc=(crc>>>8)^CRC32_TABLE[(crc^arr[i])&0xFF];
+  return ((crc^0xFFFFFFFF)>>>0).toString(16).padStart(8,'0').toUpperCase();
+}
+
+// ── SHA via SubtleCrypto ──
+async function computeSubtle(arr, algo) {
+  const buf = await crypto.subtle.digest(algo, arr.buffer);
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('').toUpperCase();
+}
+
+// ── MD5 (pure JS) ──
+function computeMD5(arr) {
+  function sa(x,y){const l=(x&0xFFFF)+(y&0xFFFF);const m=(x>>16)+(y>>16)+(l>>16);return(m<<16)|(l&0xFFFF);}
+  function rl(n,c){return(n<<c)|(n>>>(32-c));}
+  function cm(q,a,b,x,s,t){return sa(rl(sa(sa(a,q),sa(x,t)),s),b);}
+  function ff(a,b,c,d,x,s,t){return cm((b&c)|((~b)&d),a,b,x,s,t);}
+  function gg(a,b,c,d,x,s,t){return cm((b&d)|(c&(~d)),a,b,x,s,t);}
+  function hh(a,b,c,d,x,s,t){return cm(b^c^d,a,b,x,s,t);}
+  function ii(a,b,c,d,x,s,t){return cm(c^(b|(~d)),a,b,x,s,t);}
+  const l8=arr.length, l32=Math.ceil((l8+9)/64)*16;
+  const M=new Int32Array(l32);
+  for(let i=0;i<l8;i++) M[i>>2]|=arr[i]<<((i%4)*8);
+  M[l8>>2]|=0x80<<((l8%4)*8); M[l32-2]=l8*8;
+  let a=0x67452301,b=0xEFCDAB89,c=0x98BADCFE,d=0x10325476;
+  for(let i=0;i<l32;i+=16){
+    const[A,B,C,D]=[a,b,c,d];
+    a=ff(a,b,c,d,M[i+0],7,-680876936);d=ff(d,a,b,c,M[i+1],12,-389564586);c=ff(c,d,a,b,M[i+2],17,606105819);b=ff(b,c,d,a,M[i+3],22,-1044525330);
+    a=ff(a,b,c,d,M[i+4],7,-176418897);d=ff(d,a,b,c,M[i+5],12,1200080426);c=ff(c,d,a,b,M[i+6],17,-1473231341);b=ff(b,c,d,a,M[i+7],22,-45705983);
+    a=ff(a,b,c,d,M[i+8],7,1770035416);d=ff(d,a,b,c,M[i+9],12,-1958414417);c=ff(c,d,a,b,M[i+10],17,-42063);b=ff(b,c,d,a,M[i+11],22,-1990404162);
+    a=ff(a,b,c,d,M[i+12],7,1804603682);d=ff(d,a,b,c,M[i+13],12,-40341101);c=ff(c,d,a,b,M[i+14],17,-1502002290);b=ff(b,c,d,a,M[i+15],22,1236535329);
+    a=gg(a,b,c,d,M[i+1],5,-165796510);d=gg(d,a,b,c,M[i+6],9,-1069501632);c=gg(c,d,a,b,M[i+11],14,643717713);b=gg(b,c,d,a,M[i+0],20,-373897302);
+    a=gg(a,b,c,d,M[i+5],5,-701558691);d=gg(d,a,b,c,M[i+10],9,38016083);c=gg(c,d,a,b,M[i+15],14,-660478335);b=gg(b,c,d,a,M[i+4],20,-405537848);
+    a=gg(a,b,c,d,M[i+9],5,568446438);d=gg(d,a,b,c,M[i+14],9,-1019803690);c=gg(c,d,a,b,M[i+3],14,-187363961);b=gg(b,c,d,a,M[i+8],20,1163531501);
+    a=gg(a,b,c,d,M[i+13],5,-1444681467);d=gg(d,a,b,c,M[i+2],9,-51403784);c=gg(c,d,a,b,M[i+7],14,1735328473);b=gg(b,c,d,a,M[i+12],20,-1926607734);
+    a=hh(a,b,c,d,M[i+5],4,-378558);d=hh(d,a,b,c,M[i+8],11,-2022574463);c=hh(c,d,a,b,M[i+11],16,1839030562);b=hh(b,c,d,a,M[i+14],23,-35309556);
+    a=hh(a,b,c,d,M[i+1],4,-1530992060);d=hh(d,a,b,c,M[i+4],11,1272893353);c=hh(c,d,a,b,M[i+7],16,-155497632);b=hh(b,c,d,a,M[i+10],23,-1094730640);
+    a=hh(a,b,c,d,M[i+13],4,681279174);d=hh(d,a,b,c,M[i+0],11,-358537222);c=hh(c,d,a,b,M[i+3],16,-722521979);b=hh(b,c,d,a,M[i+6],23,76029189);
+    a=hh(a,b,c,d,M[i+9],4,-640364487);d=hh(d,a,b,c,M[i+12],11,-421815835);c=hh(c,d,a,b,M[i+15],16,530742520);b=hh(b,c,d,a,M[i+2],23,-995338651);
+    a=ii(a,b,c,d,M[i+0],6,-198630844);d=ii(d,a,b,c,M[i+7],10,1126891415);c=ii(c,d,a,b,M[i+14],15,-1416354905);b=ii(b,c,d,a,M[i+5],21,-57434055);
+    a=ii(a,b,c,d,M[i+12],6,1700485571);d=ii(d,a,b,c,M[i+3],10,-1894986606);c=ii(c,d,a,b,M[i+10],15,-1051523);b=ii(b,c,d,a,M[i+1],21,-2054922799);
+    a=ii(a,b,c,d,M[i+8],6,1873313359);d=ii(d,a,b,c,M[i+15],10,-30611744);c=ii(c,d,a,b,M[i+6],15,-1560198380);b=ii(b,c,d,a,M[i+13],21,1309151649);
+    a=ii(a,b,c,d,M[i+4],6,-145523070);d=ii(d,a,b,c,M[i+11],10,-1120210379);c=ii(c,d,a,b,M[i+2],15,718787259);b=ii(b,c,d,a,M[i+9],21,-343485551);
+    a=sa(a,A);b=sa(b,B);c=sa(c,C);d=sa(d,D);
+  }
+  return [a,b,c,d].map(n=>{let s='';for(let i=0;i<4;i++)s+=((n>>(i*8))&0xFF).toString(16).padStart(2,'0');return s;}).join('').toUpperCase();
+}
+
+function formatBytes(b) {
+  if(b>=1073741824) return(b/1073741824).toFixed(2)+' GB';
+  if(b>=1048576)    return(b/1048576).toFixed(2)+' MB';
+  if(b>=1024)       return(b/1024).toFixed(2)+' KB';
+  return b+' B';
+}
+
+function xHC(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}

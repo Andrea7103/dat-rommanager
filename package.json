@@ -1,0 +1,36 @@
+{
+  "name": "dat-rommanager",
+  "version": "0.9.1",
+  "description": "All-in-one DAT management toolkit for ROM preservation",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build-win": "electron-builder --win --x64",
+    "build-mac": "electron-builder --mac",
+    "build-linux": "electron-builder --linux"
+  },
+  "build": {
+    "appId": "com.rompreservation.datrommanager",
+    "productName": "DAT RomManager",
+    "copyright": "Andrea Luca Bozzalla & Claude (Anthropic AI)",
+    "directories": { "output": "dist" },
+    "win": {
+      "target": [{ "target": "portable", "arch": ["x64"] }],
+      "icon": "assets/icon.ico"
+    },
+    "mac": {
+      "target": [{ "target": "dmg", "arch": ["x64", "arm64"] }],
+      "icon": "assets/icon.icns",
+      "category": "public.app-category.utilities"
+    },
+    "linux": {
+      "target": ["AppImage"],
+      "icon": "assets/icon.png"
+    },
+    "files": ["main.js","preload.js","renderer/**/*","assets/**/*"]
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.0.0"
+  }
+}
