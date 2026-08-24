@@ -1,0 +1,132 @@
+═══════════════════════════════════════════════════════════════
+  DAT//ROMMANAGER  —  BUILD & GITHUB INSTRUCTIONS
+  Version: 0.9.0-beta
+  Authors: Andrea Luca Bozzalla & Claude (Anthropic AI)
+═══════════════════════════════════════════════════════════════
+
+PREREQUISITES
+─────────────
+  • Node.js 18+  https://nodejs.org
+  • npm          (included with Node.js)
+  • Git          https://git-scm.com
+
+INSTALL DEPENDENCIES
+────────────────────
+  npm install
+
+RUN IN DEVELOPMENT
+──────────────────
+  npm start
+
+BUILD FOR WINDOWS (portable .exe)
+──────────────────────────────────
+  npm run build-win
+  → Output: dist/DAT RomManager*.exe
+
+BUILD FOR MAC (.dmg — Intel + Apple Silicon)
+────────────────────────────────────────────
+  npm run build-mac
+  → Output: dist/DAT RomManager*.dmg
+
+BUILD FOR LINUX (AppImage)
+──────────────────────────
+  npm run build-linux
+  → Output: dist/DAT RomManager*.AppImage
+
+═══════════════════════════════════════════════════════════════
+  GITHUB — PERSONAL ACCESS TOKEN (PAT)
+═══════════════════════════════════════════════════════════════
+
+The github-setup.bat script uses a GitHub Personal Access Token
+to create the repository automatically via the GitHub API.
+You need to generate one ONCE and keep it somewhere safe.
+
+HOW TO CREATE A TOKEN
+─────────────────────
+1. Go to: https://github.com/settings/tokens/new
+   (Login required — GitHub > Settings > Developer Settings >
+    Personal access tokens > Tokens (classic) > Generate new)
+
+2. Fill in the form:
+   • Note:       dat-rommanager setup
+   • Expiration: choose your preference (90 days or No expiration)
+   • Scopes:     check [x] repo  (full control of repositories)
+                 — this is the only scope needed
+
+3. Click "Generate token" at the bottom
+
+4. COPY THE TOKEN IMMEDIATELY — GitHub shows it only once.
+   It looks like: ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+5. Paste it when github-setup.bat asks for it.
+
+SECURITY NOTES
+──────────────
+  • github-setup.bat removes the token from the git remote URL
+    immediately after push — it is never stored in plain text.
+  • Do NOT commit your token to any repository.
+  • If a token is accidentally exposed, revoke it immediately at:
+    https://github.com/settings/tokens
+
+═══════════════════════════════════════════════════════════════
+  GITHUB SETUP — AUTOMATED (recommended)
+═══════════════════════════════════════════════════════════════
+
+Just run:  github-setup.bat
+
+It will:
+  1. Ask for your GitHub username, repo name, description
+  2. Ask for your Personal Access Token (see above)
+  3. Create the repository on GitHub automatically via API
+  4. Initialize local git, create the first commit
+  5. Push everything to GitHub
+  6. Show the link to publish a release
+
+═══════════════════════════════════════════════════════════════
+  GITHUB SETUP — MANUAL (alternative)
+═══════════════════════════════════════════════════════════════
+
+1. Create repo on GitHub
+   → https://github.com/new
+   → Name: dat-rommanager  |  Public  |  NO readme
+
+2. Initialize local git
+   git init
+   git add .
+   git commit -m "feat: initial release v0.9.0-beta"
+
+3. Connect and push
+   git remote add origin https://github.com/Andrea7103/dat-rommanager.git
+   git branch -M main
+   git push -u origin main
+
+═══════════════════════════════════════════════════════════════
+  PUBLISHING A RELEASE ON GITHUB
+═══════════════════════════════════════════════════════════════
+
+Option A — Automated:  github-push.bat  (prompts for tag)
+
+Option B — Manual:
+  1. Tag the version
+     git tag v0.9.0-beta
+     git push origin v0.9.0-beta
+
+  2. Go to GitHub → Releases → "Draft a new release"
+     → Tag:   v0.9.0-beta
+     → Title: DAT//ROMMANAGER v0.9.0-beta
+     → ✅ "Set as pre-release" for beta versions
+     → Write release notes (shown in the app's What's New!)
+     → Attach: dist/DAT RomManager*.exe  (and/or .dmg)
+
+  3. Publish release
+
+NOTE: The app checks github.com/Andrea7103/dat-rommanager/releases/latest
+      at startup to notify users of new versions. The release body text
+      is shown verbatim in the "What's New" dialog inside the app.
+
+═══════════════════════════════════════════════════════════════
+  VERSION HISTORY
+═══════════════════════════════════════════════════════════════
+  0.9.0-beta  — First public beta release
+                Modules: DAT Merger (READY) · DAT Explorer (READY)
+                         DAT Splitter (BETA) · Checksum Calculator (READY)
