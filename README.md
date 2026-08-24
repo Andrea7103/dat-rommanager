@@ -83,6 +83,14 @@ npm run build-linux  # Linux .AppImage
 - **Module 05 — DAT Generator:** real-time verbose console with progress bar
 - **Module 04 — DAT Diff:** virtual scroll for instant tab switching with 40,000+ entries
 - **Module 04 — DAT Diff:** fixed list not rendering after COMPARE
+- **Module 04 — DAT Diff:** fixed entries with no dumped ROMs (device/slot placeholders) overwriting each other during comparison
+- **Bug fix:** DAT Diff, Explorer Fix & Export, and Checksum export buttons now actually write the file to disk and report real success/failure (previously always reported success without saving)
+- **Bug fix:** exported DAT paths now use proper cross-platform path handling — export no longer silently breaks on macOS/Linux
+- **Bug fix:** DAT Generator — emulator arguments with quoted paths (spaces) no longer get split incorrectly
+- **Bug fix:** DAT Generator — a failed emulator process is now reported as an error instead of silently producing an empty DAT
+- **Bug fix:** DAT Generator — duplicate filenames across subfolders no longer produce duplicate game names in the generated DAT
+- **UI:** redesigned typography for readability — body text now uses a clean sans-serif font, with the retro terminal fonts kept only for headers, icons and large stat displays
+- **UI:** improved text contrast throughout the app
 - All modules promoted to READY
 
 ### v0.9.0 — March 2026 · First public release
