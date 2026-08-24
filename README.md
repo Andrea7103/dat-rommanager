@@ -77,7 +77,7 @@ npm run build-linux  # Linux .AppImage
 
 ## Changelog
 
-### v0.9.1 — March 2026
+### v0.9.1 — August 2026
 - **Module 05 — DAT Generator (NEW):** generate DAT from ROM folder scan with CRC32 + MD5 + SHA1 via streaming
 - **Module 05 — DAT Generator:** generate DAT from emulator EXE output — auto-detects MAME, HBMAME, FBNeo, PinMAME, MESS, GroovyMAME, Raine, Nebula
 - **Module 05 — DAT Generator:** real-time verbose console with progress bar
